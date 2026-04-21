@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Léonard · Faire-part de naissance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Italianno&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="stars" aria-hidden="true"></div>
+
+  <!-- Top chrome -->
+  <header class="chrome-top">
+    <div class="wordmark">Faire&nbsp;<span class="dot">·</span>&nbsp;Part</div>
+    <button class="music-btn" id="musicBtn" aria-label="Activer la musique">
+      <span class="bars" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+      <span class="label">Musique · off</span>
+    </button>
+  </header>
+
+  <!-- Horizontal rail -->
+  <main class="rail" id="rail" role="main">
+
+    <!-- 01 — HERO -->
+    <section class="scene scene-hero" data-screen-label="01 Annonce">
+      <div class="scene-badge reveal r-1">01 · Annonce</div>
+
+      <div class="script-hello script reveal r-1">Nous vous présentons</div>
+
+      <h1 class="name display reveal r-2">
+        <span data-t="babyName">Léonard</span>
+      </h1>
+
+      <div class="reveal r-3" style="font-family:var(--script); font-size:clamp(40px, 5vw, 72px); color: var(--gold-soft); line-height:0.9; margin-top:-4px;">
+        <span data-t="babyMiddle">Augustin</span>
+      </div>
+
+      <div class="date-line reveal r-4">
+        <span data-t="dateLong">14 avril 2026</span>
+      </div>
+
+      <div class="sub reveal r-5">
+        né à <span data-t="city">Paris</span>, à <span data-t="timeBirth">04h27</span>
+      </div>
+
+      <div class="scroll-cue">Faire défiler&nbsp; →</div>
+    </section>
+
+    <!-- 02 — DETAILS -->
+    <section class="scene scene-stats" data-screen-label="02 Détails">
+      <div class="scene-badge reveal r-1">02 · Détails</div>
+      <div class="stats-wrap">
+        <div class="stats-lead">
+          <div class="eyebrow reveal r-1">Premier souffle</div>
+          <div class="script-h script reveal r-2" style="margin-top:14px;">Un petit être</div>
+          <h2 class="title display reveal r-3">venu au monde<br/>le <span data-t="dateShort">14.04.2026</span></h2>
+          <hr class="rule reveal r-4" />
+          <p class="body reveal r-5" style="max-width:420px; margin-top:24px;">
+            Les premières heures d'une vie entière. Quelques chiffres tout simples,
+            pour se souvenir à jamais de ce matin d'avril.
+          </p>
+        </div>
+        <div class="stats-grid">
+          <div class="stat reveal r-3">
+            <div class="k">Poids</div>
+            <div class="v"><span data-t="weight">3,42</span><span class="u">kg</span></div>
+          </div>
+          <div class="stat reveal r-4">
+            <div class="k">Taille</div>
+            <div class="v"><span data-t="height">51</span><span class="u">cm</span></div>
+          </div>
+          <div class="stat reveal r-5">
+            <div class="k">Heure</div>
+            <div class="v" data-t="timeBirth">04h27</div>
+          </div>
+          <div class="stat reveal r-6">
+            <div class="k">Lieu</div>
+            <div class="v" style="font-size:24px;" data-t="maternity">Maternité des Lilas</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 — PHOTOS triptyque -->
+    <section class="scene scene-photos" data-screen-label="03 Photos">
+      <div class="scene-badge reveal r-1">03 · Premiers instants</div>
+      <div class="header reveal r-1">
+        <div class="overline">Premiers jours</div>
+        <div class="script-h script" style="margin-top:6px;">Ses premiers instants</div>
+      </div>
+      <div class="triptych">
+        <div class="ph reveal r-2" data-label="photo · main du bébé"></div>
+        <div class="ph reveal r-3" data-label="photo · portrait"></div>
+        <div class="ph reveal r-4" data-label="photo · avec maman"></div>
+      </div>
+    </section>
+
+    <!-- 04 — MOT DES PARENTS -->
+    <section class="scene scene-words" data-screen-label="04 Mot des parents">
+      <div class="scene-badge reveal r-1">04 · Mot des parents</div>
+      <div class="words-wrap">
+        <div class="mark reveal r-1">“</div>
+        <p class="reveal r-2">
+          Nous t'attendions depuis si longtemps, et tu es arrivé au petit matin, doucement,
+          comme tu sembles vouloir traverser la vie. Nos cœurs n'ont jamais été aussi pleins.
+          Bienvenue, mon amour. Le monde a de la chance de t'accueillir.
+        </p>
+        <div class="signed reveal r-3">
+          <span data-t="mother">Camille</span> &amp; <span data-t="father">Julien</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 — FAMILLE / ARBRE -->
+    <section class="scene scene-family" data-screen-label="05 Famille">
+      <div class="scene-badge reveal r-1">05 · Famille</div>
+      <div class="family-wrap">
+        <div class="overline reveal r-1">Les siens</div>
+        <div class="script-h reveal r-2">parmi nous</div>
+        <h2 class="title display reveal r-3" style="margin-top:-8px; margin-bottom:56px;">
+          Quatre générations
+        </h2>
+
+        <div class="tree">
+          <div class="tree-row reveal r-4">
+            <div class="node">
+              <div class="rel">Grands-parents paternels</div>
+              <div class="name" data-t="paternalGP">Pierre &amp; Hélène</div>
+            </div>
+            <div class="node">
+              <div class="rel">Grands-parents maternels</div>
+              <div class="name" data-t="maternalGP">Antoine &amp; Marie</div>
+            </div>
+          </div>
+          <div class="tree-line reveal r-5"></div>
+          <div class="tree-row reveal r-5">
+            <div class="node">
+              <div class="rel">Père</div>
+              <div class="name" data-t="father">Julien</div>
+            </div>
+            <div class="node">
+              <div class="rel">Mère</div>
+              <div class="name" data-t="mother">Camille</div>
+            </div>
+          </div>
+          <div class="tree-line reveal r-6"></div>
+          <div class="tree-row reveal r-6">
+            <div class="node child">
+              <div class="rel">Leur fils</div>
+              <div class="name" data-t="babyName">Léonard</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 — CHRONOLOGIE -->
+    <section class="scene scene-timeline" data-screen-label="06 Chronologie">
+      <div class="scene-badge reveal r-1">06 · Chronologie</div>
+      <div class="timeline-wrap">
+        <div class="overline reveal r-1">Le chemin parcouru</div>
+        <h2 class="title display reveal r-2">De l'attente</h2>
+        <div class="script-h reveal r-3">à l'émerveillement</div>
+
+        <div class="timeline">
+          <div class="tick reveal r-4">
+            <div class="date">Août 2025</div>
+            <div class="label">Le test positif — l'incroyable nouvelle partagée à deux.</div>
+          </div>
+          <div class="tick reveal r-4">
+            <div class="date">Oct 2025</div>
+            <div class="label">Première échographie. Un petit cœur, déjà fort.</div>
+          </div>
+          <div class="tick reveal r-5">
+            <div class="date">Janv 2026</div>
+            <div class="label">On apprend que c'est un garçon. Le prénom s'impose.</div>
+          </div>
+          <div class="tick reveal r-5">
+            <div class="date">Mars 2026</div>
+            <div class="label">La chambre est prête. Les valises aussi. On attend.</div>
+          </div>
+          <div class="tick now reveal r-6">
+            <div class="date">14 avril 2026</div>
+            <div class="label">Léonard ouvre les yeux. Notre vie commence à trois.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 — GALERIE -->
+    <section class="scene scene-gallery" data-screen-label="07 Galerie">
+      <div class="scene-badge reveal r-1">07 · Galerie</div>
+      <div class="header reveal r-1">
+        <div class="overline">Album</div>
+        <div class="script-h script" style="margin-top:6px;">Quelques souvenirs</div>
+      </div>
+      <div class="gallery">
+        <div class="ph reveal r-2" data-label="photo · portrait 01"></div>
+        <div class="ph reveal r-3" data-label="photo · détail main"></div>
+        <div class="ph reveal r-3" data-label="photo · famille"></div>
+        <div class="ph reveal r-4" data-label="photo · sommeil"></div>
+        <div class="ph reveal r-4" data-label="photo · premier sourire"></div>
+      </div>
+    </section>
+
+    <!-- 08 — LIVRE D'OR -->
+    <section class="scene scene-guestbook" data-screen-label="08 Livre d'or">
+      <div class="scene-badge reveal r-1">08 · Livre d'or</div>
+      <div class="guest-wrap">
+        <div class="guest-left">
+          <div class="overline reveal r-1">Laissez un mot</div>
+          <div class="script-h script reveal r-2">Quelques mots</div>
+          <h2 class="title display reveal r-3">pour Léonard</h2>
+          <p class="body reveal r-4">
+            Vos messages seront relus dans quelques années,
+            quand il sera assez grand pour les comprendre.
+          </p>
+          <form class="guest-form reveal r-5" id="guestForm">
+            <div class="row">
+              <input type="text" name="name" placeholder="Votre prénom" required />
+              <input type="text" name="from" placeholder="Depuis… (ville, lien)" />
+            </div>
+            <textarea name="body" placeholder="Votre message pour lui…" required></textarea>
+            <button type="submit" class="send-btn">Déposer le mot</button>
+          </form>
+        </div>
+        <div class="guest-right reveal r-4">
+          <div id="msgList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 09 — LISTE DE NAISSANCE -->
+    <section class="scene scene-registry" data-screen-label="09 Liste de naissance">
+      <div class="scene-badge reveal r-1">09 · Liste de naissance</div>
+      <div class="reg-wrap">
+        <div class="reg-head">
+          <div class="overline reveal r-1">Si le cœur vous en dit</div>
+          <div class="script-h script reveal r-2">Sa petite</div>
+          <h2 class="title display reveal r-3">liste de naissance</h2>
+          <p class="body reveal r-4" style="max-width:520px; margin:16px auto 0; text-align:center;">
+            Cliquez sur un objet pour le réserver — chaque geste est un grand merci.
+          </p>
+        </div>
+        <div class="reg-grid reveal r-5" id="regGrid"></div>
+      </div>
+    </section>
+
+    <!-- 10 — INFOS PRATIQUES -->
+    <section class="scene scene-info" data-screen-label="10 Infos pratiques">
+      <div class="scene-badge reveal r-1">10 · Infos pratiques</div>
+      <div class="info-wrap">
+        <div class="info-head">
+          <div class="overline reveal r-1">Venir le rencontrer</div>
+          <div class="script-h script reveal r-2">En pratique</div>
+          <h2 class="title display reveal r-3">pour les visites</h2>
+        </div>
+        <div class="info-grid">
+          <div class="info-card reveal r-4">
+            <div class="label">Maternité</div>
+            <div class="value" data-t="maternity">Maternité des Lilas</div>
+            <div class="note">14 rue du Coq-Français, 93260 Les&nbsp;Lilas.<br/>Chambre 214, 3ᵉ étage.</div>
+          </div>
+          <div class="info-card reveal r-5">
+            <div class="label">Visites</div>
+            <div class="value">14h — 19h, tous les jours</div>
+            <div class="note">Merci de nous prévenir par message un peu avant de venir.</div>
+          </div>
+          <div class="info-card reveal r-5">
+            <div class="label">Retour à la maison</div>
+            <div class="value">Samedi 18 avril</div>
+            <div class="note">À partir de là, les visites se font sur rendez-vous, le temps de trouver nos marques.</div>
+          </div>
+          <div class="info-card reveal r-6">
+            <div class="label">Nous joindre</div>
+            <div class="value">06 12 34 56 78</div>
+            <div class="note">Camille &amp; Julien — sms de préférence, les journées sont encore brouillons.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11 — MERCI -->
+    <section class="scene scene-end" data-screen-label="11 Merci">
+      <div class="scene-badge reveal r-1">11 · Avec tendresse</div>
+      <div class="overline reveal r-1">Avec toute notre tendresse</div>
+      <div class="script-h script reveal r-2">Merci</div>
+      <div class="sig reveal r-3">
+        <span data-t="mother">Camille</span>, <span data-t="father">Julien</span>
+        &amp; <span data-t="babyName">Léonard</span>
+      </div>
+      <div class="mono reveal r-4">— avril&nbsp;·&nbsp;mmxxvi —</div>
+    </section>
+
+  </main>
+
+  <!-- Bottom chrome -->
+  <nav class="chrome-bottom" aria-label="Navigation entre les pages">
+    <div class="progress" id="progress">
+      <div class="seg" title="Annonce"></div>
+      <div class="seg" title="Détails"></div>
+      <div class="seg" title="Photos"></div>
+      <div class="seg" title="Mot des parents"></div>
+      <div class="seg" title="Famille"></div>
+      <div class="seg" title="Chronologie"></div>
+      <div class="seg" title="Galerie"></div>
+      <div class="seg" title="Livre d'or"></div>
+      <div class="seg" title="Liste de naissance"></div>
+      <div class="seg" title="Infos pratiques"></div>
+      <div class="seg" title="Merci"></div>
+    </div>
+    <div class="scene-count" id="sceneCount">01 / 11</div>
+    <div class="nav-btns">
+      <button class="nav-btn" id="prevBtn" aria-label="Précédent">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <button class="nav-btn" id="nextBtn" aria-label="Suivant">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Tweaks panel -->
+  <aside class="tweaks" id="tweaks"></aside>
+
+  <script src="app.js"></script>
+</body>
+</html>

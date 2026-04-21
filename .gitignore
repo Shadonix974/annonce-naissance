@@ -1,0 +1,46 @@
+# ---- Secrets ----
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ---- Node / TypeScript ----
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.npm/
+.pnpm-store/
+coverage/
+.nyc_output/
+
+# ---- Docker runtime data ----
+postgres_data/
+caddy_data/
+caddy_config/
+backups/
+
+# ---- Logs ----
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# ---- OS & editors ----
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ---- Tests ----
+playwright-report/
+test-results/
+.lighthouseci/
+
+# ---- Misc ----
+.cache/
+.turbo/
