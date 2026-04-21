@@ -1,10 +1,10 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
+import { env } from "./env.js";
 
 const app = new Hono();
 app.get("/healthz", (c) => c.json({ ok: true }));
 
-const port = Number(process.env.PORT ?? 3000);
-serve({ fetch: app.fetch, port });
+serve({ fetch: app.fetch, port: env.PORT });
 // eslint-disable-next-line no-console
-console.log(`listening on :${port}`);
+console.log(`listening on :${env.PORT}`);
