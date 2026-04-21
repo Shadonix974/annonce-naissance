@@ -1,0 +1,5 @@
+# Completed in Phase 10 (Task 41).
+# Placeholder block so imports from the compose file are stable.
+:80 {
+  respond "annonce-leonard — not configured yet" 503
+}
