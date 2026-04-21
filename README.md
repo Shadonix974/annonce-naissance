@@ -17,3 +17,11 @@ Rail horizontal éditorial sur desktop, feed vertical sur mobile. Liste de naiss
 Phase de conception. La spec complète est dans `docs/superpowers/specs/2026-04-22-annonce-naissance-design.md`.
 
 Les fichiers `Annonce-naissance.html`, `app.js`, `styles.css` sont la maquette statique d'origine qui servira de base au front.
+
+## Workspaces
+
+- `web/` — static front (HTML/CSS/JS, served by Caddy).
+- `api/` — Node.js + Hono backend, Dockerized.
+- `e2e/` — Playwright end-to-end tests.
+
+See `docs/superpowers/specs/2026-04-22-annonce-naissance-design.md` for the full design.
