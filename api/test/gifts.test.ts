@@ -1,4 +1,5 @@
 import { beforeEach, expect, test } from "vitest";
+import argon2 from "argon2";
 import { runSeeds } from "../src/db/seeds.js";
 import { buildApp, httpJson, resetDb } from "./helpers.js";
 import { getAccessToken } from "../src/lib/access-token.js";
@@ -66,4 +67,47 @@ test("reserve rejected without token", async () => {
   });
   const { status } = await httpJson(app, req);
   expect(status).toBe(404);
+});
+
+const ADMIN_PW = "admin-pw";
+
+async function adminCookie(app: Awaited<ReturnType<typeof buildApp>>): Promise<string> {
+  const res = await app.fetch(new Request("http://localhost:3000/api/admin/login", {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: "http://localhost:3000" },
+    body: JSON.stringify({ password: ADMIN_PW }),
+  }));
+  return res.headers.get("set-cookie")!.split(";")[0];
+}
+
+test("admin can force-unreserve a gift reserved by someone else", async () => {
+  process.env.ADMIN_PASSWORD_HASH = await argon2.hash(ADMIN_PW, { type: argon2.argon2id });
+  const token = (await getAccessToken())!;
+  const id = await firstGiftId();
+  const app = await buildApp();
+  await app.fetch(giftReq(`/api/gifts/${id}/reserve`, token, { name: "Sophie" }));
+  const cookie = await adminCookie(app);
+  const res = await app.fetch(new Request(`http://localhost:3000/api/admin/gifts/${id}/force-unreserve`, {
+    method: "POST",
+    headers: { origin: "http://localhost:3000", cookie },
+  }));
+  expect(res.status).toBe(200);
+});
+
+test("admin creates and deletes a gift", async () => {
+  process.env.ADMIN_PASSWORD_HASH = await argon2.hash(ADMIN_PW, { type: argon2.argon2id });
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+  const created = await app.fetch(new Request("http://localhost:3000/api/admin/gifts", {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: "http://localhost:3000", cookie },
+    body: JSON.stringify({ name: "Lampe veilleuse", rangeText: "35 €" }),
+  }));
+  expect(created.status).toBe(201);
+  const g = await created.json();
+  const del = await app.fetch(new Request(`http://localhost:3000/api/admin/gifts/${g.id}`, {
+    method: "DELETE",
+    headers: { origin: "http://localhost:3000", cookie },
+  }));
+  expect(del.status).toBe(200);
 });
