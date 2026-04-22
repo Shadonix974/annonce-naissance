@@ -433,7 +433,7 @@ async function renderPhotosTab() {
         </select>
       </label>
     </div>
-    <div class="section-title">Existantes</div>
+    <div class="section-title">Triptyque</div>
     <div id="photosGridTriptych" class="photos-grid"></div>
     <div class="section-title" style="margin-top:16px;">Galerie</div>
     <div id="photosGridGallery" class="photos-grid"></div>
@@ -451,7 +451,7 @@ async function renderPhotosTab() {
     if (files.length) enqueueUploads(files);
   });
   input.addEventListener('change', () => {
-    const files = Array.from(input.files ?? []);
+    const files = Array.from(input.files ?? []).filter((f) => f.type.startsWith('image/'));
     if (files.length) enqueueUploads(files);
     input.value = '';
   });
