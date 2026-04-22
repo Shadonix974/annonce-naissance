@@ -3,9 +3,11 @@ import { Hono } from "hono";
 import { env } from "./env.js";
 import { runMigrations } from "./db/migrate.js";
 import { runSeeds } from "./db/seeds.js";
+import { requestLogger } from "./lib/logger.js";
 import { onError } from "./middleware/error-handler.js";
 
 const app = new Hono();
+app.use("*", requestLogger);
 app.onError(onError);
 app.get("/healthz", (c) => c.json({ ok: true }));
 
