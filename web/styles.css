@@ -876,6 +876,9 @@ body {
   width: min(440px, 90vw);
   border-radius: 4px;
   font-family: var(--serif);
+  /* The global `* { margin: 0 }` reset (line 25) kills the UA default
+     `dialog[open] { margin: auto }` that centers the dialog. Reinstate it. */
+  margin: auto;
 }
 .gift-modal::backdrop { background: rgba(10,12,20,.75); }
 .gift-modal h3 { font-weight: 300; font-size: 28px; }
@@ -890,6 +893,13 @@ body {
   font-size: 17px;
   padding: 6px 2px;
   width: 100%;
+  /* Replace the browser's default focus rectangle (which bled over the label
+     text above) with a gold underline that matches the modal's accent. */
+  outline: none;
+  transition: border-bottom-color 120ms;
+}
+.gift-modal input:focus, .gift-modal textarea:focus {
+  border-bottom-color: var(--gold);
 }
 .gift-modal textarea { resize: vertical; }
 .gift-modal-actions { display:flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
