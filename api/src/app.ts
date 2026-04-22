@@ -9,6 +9,7 @@ import adminTimeline from "./routes/admin/timeline.js";
 import adminTweaks from "./routes/admin/tweaks.js";
 import giftsRoute from "./routes/gifts.js";
 import photosRoute from "./routes/photos.js";
+import printRoute from "./routes/print.js";
 import stateRoute from "./routes/state.js";
 import streamRoute from "./routes/stream.js";
 
@@ -22,6 +23,7 @@ app.route("/api/admin/gifts", adminGifts);
 app.route("/api/admin/photos", adminPhotos);
 app.route("/api/admin/timeline", adminTimeline);
 app.route("/api/admin/access-token", adminAccessToken);
+app.route("/api/print", printRoute);
 app.route("/api/state", stateRoute);
 app.route("/api/gifts", giftsRoute);
 app.route("/api/stream", streamRoute);
