@@ -476,7 +476,9 @@ async function enqueueUploads(files) {
       fd.append('section', section);
       fd.append('alt', res.alt);
       fd.append('cropped', '1');
-      const position = Date.now() % 1_000_000; // appended at end, resolved on reorder
+      // Strictly increasing position so batch uploads preserve their order in the
+      // admin grid; the user can drag to reorder afterwards.
+      const position = Date.now() + i;
       fd.append('position', String(position));
       // Toast shown AFTER the modal closes (else it's occluded by the dialog).
       showToast(`Envoi ${i + 1}/${files.length}…`);
@@ -574,6 +576,15 @@ function photoCard(p) {
         body: JSON.stringify({ x: res.x, y: res.y, width: res.width, height: res.height }),
       });
       if (!r.ok) { showToast(`Erreur ${r.status}`); return; }
+      // Persist alt separately if the user edited it in the modal (the recrop
+      // endpoint only updates dims + version + blurhash).
+      if (res.alt && res.alt !== (p.alt || '')) {
+        const altRes = await fetch(`/api/admin/photos/${p.id}`, {
+          method: 'PATCH', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ alt: res.alt }),
+        });
+        if (altRes.ok) p.alt = res.alt;
+      }
       showToast('Recadré ✓');
       await refreshPhotoGrid();
       document.getElementById('previewFrame').contentWindow.location.reload();
