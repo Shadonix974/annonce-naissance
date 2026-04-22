@@ -13,7 +13,7 @@ const { tweaks, photos } = schema;
 // (we don't want to leak gifts, timeline, or unrelated tweaks to recipients
 // of the print token).
 const PRINT_TWEAK_KEYS = [
-  "babyName", "babyMiddle", "dateLong", "dateShort", "timeBirth",
+  "babyName", "babyMiddle", "dateLong", "timeBirth",
   "weight", "height", "city", "maternity",
   "father", "mother",
 ] as const;
