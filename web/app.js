@@ -299,10 +299,10 @@ const GALLERY_PLACEHOLDERS = [
 
 function renderPhotos() {
   const grids = [
-    { el: document.getElementById('triptychGrid'), section: 'triptych', placeholders: TRIPTYCH_PLACEHOLDERS },
-    { el: document.getElementById('galleryGrid'),  section: 'gallery',  placeholders: GALLERY_PLACEHOLDERS },
+    { el: document.getElementById('triptychGrid'), section: 'triptych', placeholders: TRIPTYCH_PLACEHOLDERS, masonry: false },
+    { el: document.getElementById('galleryGrid'),  section: 'gallery',  placeholders: GALLERY_PLACEHOLDERS,  masonry: true  },
   ];
-  for (const { el, section, placeholders } of grids) {
+  for (const { el, section, placeholders, masonry } of grids) {
     if (!el) continue;
     el.innerHTML = '';
     const items = state.photos.filter((p) => p.section === section);
@@ -318,14 +318,16 @@ function renderPhotos() {
       continue;
     }
     for (const p of items) {
+      const v = p.version || 1;
       const pic = document.createElement('picture');
       pic.className = 'ph';
-      const sizesAttr = section === 'triptych' ? '(max-width: 820px) 100vw, 33vw' : '(max-width: 820px) 100vw, 50vw';
+      const sizesAttr = section === 'triptych' ? '(max-width: 820px) 100vw, 33vw' : '(max-width: 820px) 50vw, 33vw';
+      pic.style.aspectRatio = `${p.width} / ${p.height}`;
       pic.innerHTML = `
-        <source type="image/avif" srcset="/photos/${p.id}/thumb.avif 400w, /photos/${p.id}/medium.avif 1200w, /photos/${p.id}/full.avif 2000w" sizes="${sizesAttr}">
-        <source type="image/webp" srcset="/photos/${p.id}/thumb.webp 400w, /photos/${p.id}/medium.webp 1200w, /photos/${p.id}/full.webp 2000w" sizes="${sizesAttr}">
-        <img src="/photos/${p.id}/medium.jpg"
-             srcset="/photos/${p.id}/thumb.jpg 400w, /photos/${p.id}/medium.jpg 1200w, /photos/${p.id}/full.jpg 2000w"
+        <source type="image/avif" srcset="/photos/${p.id}/thumb.avif?v=${v} 400w, /photos/${p.id}/medium.avif?v=${v} 1200w, /photos/${p.id}/full.avif?v=${v} 2000w" sizes="${sizesAttr}">
+        <source type="image/webp" srcset="/photos/${p.id}/thumb.webp?v=${v} 400w, /photos/${p.id}/medium.webp?v=${v} 1200w, /photos/${p.id}/full.webp?v=${v} 2000w" sizes="${sizesAttr}">
+        <img src="/photos/${p.id}/medium.jpg?v=${v}"
+             srcset="/photos/${p.id}/thumb.jpg?v=${v} 400w, /photos/${p.id}/medium.jpg?v=${v} 1200w, /photos/${p.id}/full.jpg?v=${v} 2000w"
              sizes="${sizesAttr}"
              width="${p.width}" height="${p.height}"
              alt="${String(p.alt || '').replace(/"/g, '&quot;')}"
@@ -333,8 +335,46 @@ function renderPhotos() {
       `;
       el.appendChild(pic);
     }
+    if (masonry) bootstrapMasonry(el);
   }
 }
+
+// Load a classic (non-ESM) script once and resolve when it's attached to window.
+function _loadVendorScript(url) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = url;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error(`failed to load ${url}`));
+    document.head.appendChild(s);
+  });
+}
+
+let _masonryReady = null;
+async function bootstrapMasonry(grid) {
+  if (!_masonryReady) {
+    // imagesLoaded is NOT bundled inside masonry.pkgd.min.js (contrary to popular
+    // belief — the "pkgd" bundle only includes jquery-bridget/get-size/ev-emitter
+    // /fizzy-ui-utils/outlayer, not imagesloaded). Load both UMD bundles.
+    _masonryReady = Promise.all([
+      _loadVendorScript('/vendor/imagesloaded.pkgd.min.js'),
+      _loadVendorScript('/vendor/masonry.pkgd.min.js'),
+    ]);
+  }
+  await _masonryReady;
+  window.imagesLoaded(grid, () => {
+    if (grid._masonry) grid._masonry.destroy();
+    grid._masonry = new window.Masonry(grid, {
+      itemSelector: '.ph',
+      columnWidth: '.ph',
+      percentPosition: true,
+      gutter: 12,
+      transitionDuration: 0,
+    });
+  });
+}
+
 function subscribeSSE(token) {
   const es = new EventSource(`/api/stream?k=${encodeURIComponent(token)}`);
   es.addEventListener('gift.reserved',   (e) => applyGiftPatch(JSON.parse(e.data)));
