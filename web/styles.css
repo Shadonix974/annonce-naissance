@@ -1071,3 +1071,43 @@ body {
 .gift-modal-actions button.primary { background: var(--gold); color: var(--ink); border-color: var(--gold); }
 .gift-modal-actions button[disabled] { opacity:.4; cursor: not-allowed; }
 .gift-modal-error { color: oklch(0.76 0.1 25); font-style: italic; margin-top: 16px; font-size: 13px; }
+
+/* ============================================================
+   Mobile — vertical feed (M2)
+   ============================================================ */
+@media (max-width: 820px) {
+  html, body { overflow: auto; }
+  .rail {
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    height: auto;
+    min-height: 100svh;
+  }
+  .scene {
+    flex: 0 0 auto;
+    width: 100vw;
+    height: 100svh;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    padding: 8vh 6vw;
+  }
+  .chrome-top, .chrome-bottom { bottom: 14px; top: auto; }
+  .scroll-cue::after { content: "Faire défiler ↓"; }
+  .triptych, .gallery { grid-template-columns: 1fr; gap: 16px; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .tree-row { flex-direction: column; gap: 20px; }
+
+  .scene-count { font-size: 12px; }
+  .nav-btn { width: 36px; height: 36px; }
+}
+
+/* ============================================================
+   Reduced motion
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+  .rail { scroll-behavior: auto; scroll-snap-type: none; }
+  .reveal { opacity: 1 !important; transform: none !important; }
+}
