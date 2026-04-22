@@ -339,7 +339,10 @@ function applyGiftDeleted(id) {
   renderGifts();
 }
 
-function registerServiceWorker() { /* implemented in Task 34 */ }
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}
 
 /* ---------- Edit mode integration ---------- */
 window.addEventListener('message', (e) => {
