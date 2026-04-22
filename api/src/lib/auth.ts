@@ -13,8 +13,10 @@ export const SESSION_TTL_MS = 30 * 24 * 3600 * 1000;
 const COOKIE_NAME = "admin_session";
 
 export async function verifyAdminPassword(plain: string): Promise<boolean> {
+  const hash = process.env.ADMIN_PASSWORD_HASH;
+  if (!hash) return false;
   try {
-    return await argon2.verify(env.ADMIN_PASSWORD_HASH, plain);
+    return await argon2.verify(hash, plain);
   } catch {
     return false;
   }

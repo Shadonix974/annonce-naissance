@@ -8,6 +8,7 @@ export default defineConfig({
     hookTimeout: 60_000,
     reporters: "default",
     environment: "node",
+    fileParallelism: false,
     sequence: { concurrent: false },
   },
 });
