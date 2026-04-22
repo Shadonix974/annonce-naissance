@@ -10,6 +10,259 @@ const API = {
   async me() { const r = await fetch('/api/admin/me'); return r.ok; },
 };
 
+/* ============================================================
+   Lazy-load vendor UMD bundles. These are classic scripts
+   (not ES modules), so we inject a <script> tag rather than
+   using dynamic import() — import() on a non-module URL fails.
+   ============================================================ */
+const _loadedScripts = new Map();
+function loadScript(url) {
+  if (_loadedScripts.has(url)) return _loadedScripts.get(url);
+  const p = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = url;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error(`failed to load ${url}`));
+    document.head.appendChild(s);
+  });
+  _loadedScripts.set(url, p);
+  return p;
+}
+let _cropperCtor = null;
+async function loadCropper() {
+  if (_cropperCtor) return _cropperCtor;
+  await loadScript('/vendor/cropper.min.js');
+  _cropperCtor = window.Cropper;
+  return _cropperCtor;
+}
+let _sortableCtor = null;
+async function loadSortable() {
+  if (_sortableCtor) return _sortableCtor;
+  await loadScript('/vendor/sortable.min.js');
+  _sortableCtor = window.Sortable;
+  return _sortableCtor;
+}
+
+/* ============================================================
+   Toast
+   ============================================================ */
+let toastTimer = 0;
+function showToast(message) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = message;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 2400);
+}
+
+/* ============================================================
+   Client-side downscale to protect iOS memory before cropping.
+   maxSide is the longest edge in the output; returns a Blob.
+   ============================================================ */
+async function downscaleForCrop(source, maxSide = 2400) {
+  const bmp = await createImageBitmap(source);
+  const ratio = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
+  const w = Math.max(1, Math.round(bmp.width * ratio));
+  const h = Math.max(1, Math.round(bmp.height * ratio));
+  if ('OffscreenCanvas' in window) {
+    const canvas = new OffscreenCanvas(w, h);
+    canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+    return canvas.convertToBlob({ type: 'image/jpeg', quality: 0.95 });
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.95));
+}
+
+/* ============================================================
+   Crop modal
+     openCropModal({ source, section, initialAlt, queueHint })
+     - source: Blob | string URL for the Cropper image
+     - section: 'triptych' | 'gallery' (drives default ratio)
+     - initialAlt: optional string to prefill the alt field
+     - queueHint: optional string shown below the alt field
+   Returns { blob, alt, ratio } on confirm, or null on cancel.
+   ============================================================ */
+const RATIOS_BY_SECTION = {
+  triptych: [{ label: '4:5', value: 4 / 5 }],
+  gallery:  [
+    { label: '1:1',  value: 1 },
+    { label: '4:5',  value: 4 / 5 },
+    { label: '3:4',  value: 3 / 4 },
+    { label: '16:9', value: 16 / 9 },
+  ],
+};
+
+async function openCropModal({ source, section, initialAlt = '', queueHint = '' }) {
+  const Cropper = await loadCropper();
+  const dlg = document.getElementById('cropModal');
+  const img = document.getElementById('cropImage');
+  const altInput = document.getElementById('cropAlt');
+  const ratioBar = document.getElementById('cropRatios');
+  const confirmBtn = document.getElementById('cropConfirm');
+  const cancelBtn = document.getElementById('cropCancel');
+  const queueHintEl = document.getElementById('cropQueueHint');
+
+  altInput.value = initialAlt;
+  queueHintEl.textContent = queueHint;
+  confirmBtn.disabled = !altInput.value.trim();
+
+  const url = typeof source === 'string' ? source : URL.createObjectURL(source);
+  img.src = url;
+
+  const ratios = RATIOS_BY_SECTION[section];
+  ratioBar.innerHTML = '';
+  let activeRatio = ratios[0].value;
+  const ratioButtons = ratios.map((r, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = r.label;
+    b.className = i === 0 ? 'active' : '';
+    b.addEventListener('click', () => {
+      ratioButtons.forEach((bb) => bb.classList.remove('active'));
+      b.classList.add('active');
+      activeRatio = r.value;
+      cropper.setAspectRatio(activeRatio);
+    });
+    ratioBar.appendChild(b);
+    return b;
+  });
+
+  await new Promise((r) => img.addEventListener('load', r, { once: true }));
+  const cropper = new Cropper(img, {
+    aspectRatio: activeRatio,
+    viewMode: 1,
+    autoCropArea: 1,
+    responsive: true,
+    restore: true,
+    checkOrientation: true,
+    background: false,
+    movable: true,
+    zoomable: true,
+    rotatable: false,
+    scalable: false,
+  });
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      cropper.destroy();
+      if (typeof source !== 'string') URL.revokeObjectURL(url);
+      dlg.close();
+      altInput.removeEventListener('input', onInput);
+      confirmBtn.removeEventListener('click', onConfirm);
+      cancelBtn.removeEventListener('click', onCancel);
+    };
+    const onInput = () => { confirmBtn.disabled = !altInput.value.trim(); };
+    const onConfirm = async () => {
+      if (!altInput.value.trim()) return;
+      const canvas = cropper.getCroppedCanvas({ imageSmoothingQuality: 'high' });
+      canvas.toBlob((blob) => {
+        cleanup();
+        resolve({ blob, alt: altInput.value.trim(), ratio: activeRatio, data: cropper.getData(true) });
+      }, 'image/jpeg', 0.92);
+    };
+    const onCancel = () => { cleanup(); resolve(null); };
+
+    altInput.addEventListener('input', onInput);
+    confirmBtn.addEventListener('click', onConfirm);
+    cancelBtn.addEventListener('click', onCancel);
+    dlg.showModal();
+  });
+}
+
+/* ============================================================
+   Recrop modal — sends back raw pixel data {x,y,width,height}
+   on the original image (not a blob, not downscaled).
+   ============================================================ */
+async function openRecropModal({ sourceUrl, section, initialAlt = '' }) {
+  const Cropper = await loadCropper();
+  const dlg = document.getElementById('cropModal');
+  const img = document.getElementById('cropImage');
+  const altInput = document.getElementById('cropAlt');
+  const ratioBar = document.getElementById('cropRatios');
+  const confirmBtn = document.getElementById('cropConfirm');
+  const cancelBtn = document.getElementById('cropCancel');
+  const queueHintEl = document.getElementById('cropQueueHint');
+
+  altInput.value = initialAlt;
+  queueHintEl.textContent = '';
+  confirmBtn.disabled = false;
+
+  img.src = sourceUrl;
+  const ratios = RATIOS_BY_SECTION[section];
+  ratioBar.innerHTML = '';
+  let activeRatio = ratios[0].value;
+  const ratioButtons = ratios.map((r, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = r.label;
+    b.className = i === 0 ? 'active' : '';
+    b.addEventListener('click', () => {
+      ratioButtons.forEach((bb) => bb.classList.remove('active'));
+      b.classList.add('active');
+      activeRatio = r.value;
+      cropper.setAspectRatio(activeRatio);
+    });
+    ratioBar.appendChild(b);
+    return b;
+  });
+
+  await new Promise((r) => img.addEventListener('load', r, { once: true }));
+  const cropper = new Cropper(img, {
+    aspectRatio: activeRatio,
+    viewMode: 1,
+    autoCropArea: 1,
+    responsive: true,
+    restore: true,
+    checkOrientation: false, // the original was already EXIF-rotated server-side
+    background: false,
+  });
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      cropper.destroy();
+      dlg.close();
+      confirmBtn.removeEventListener('click', onConfirm);
+      cancelBtn.removeEventListener('click', onCancel);
+    };
+    const onConfirm = () => {
+      const data = cropper.getData(true); // { x, y, width, height } in source pixels
+      cleanup();
+      resolve({ x: Math.round(data.x), y: Math.round(data.y), width: Math.round(data.width), height: Math.round(data.height), alt: altInput.value.trim() });
+    };
+    const onCancel = () => { cleanup(); resolve(null); };
+
+    confirmBtn.addEventListener('click', onConfirm);
+    cancelBtn.addEventListener('click', onCancel);
+    dlg.showModal();
+  });
+}
+
+/* ============================================================
+   Delete modal — returns true on confirm, false on cancel.
+   ============================================================ */
+function openDeleteModal() {
+  const dlg = document.getElementById('deleteModal');
+  const confirmBtn = document.getElementById('deleteConfirm');
+  const cancelBtn = document.getElementById('deleteCancel');
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      dlg.close();
+      confirmBtn.removeEventListener('click', onConfirm);
+      cancelBtn.removeEventListener('click', onCancel);
+    };
+    const onConfirm = () => { cleanup(); resolve(true); };
+    const onCancel  = () => { cleanup(); resolve(false); };
+    confirmBtn.addEventListener('click', onConfirm);
+    cancelBtn.addEventListener('click', onCancel);
+    dlg.showModal();
+  });
+}
+
 const TWEAK_LABELS = {
   babyName: "Prénom",
   babyMiddle: "Second prénom",
