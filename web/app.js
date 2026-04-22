@@ -39,15 +39,37 @@ function applyTweaks() {
   });
 }
 
-/* ---------- Scene tracking ---------- */
-function updateActiveScene() {
-  const rail = state.rail;
-  const vertical = getComputedStyle(rail).flexDirection === 'column';
-  const idx = vertical
-    ? Math.round(rail.scrollTop / window.innerHeight)
-    : Math.round(rail.scrollLeft / window.innerWidth);
-  if (idx !== state.sceneIdx) { state.sceneIdx = idx; syncSceneChrome(); }
+/* ---------- Scene tracking ----------
+   IntersectionObserver is used instead of a scroll listener because the
+   scroll container differs by viewport: on desktop the horizontal `.rail`
+   scrolls, on mobile the rail becomes `height:auto` and the window scrolls.
+   IO doesn't care which container moves — whichever scene crosses 50%
+   visible becomes `.is-active`, which triggers the reveal animations. */
+function setActiveScene(idx) {
+  idx = Math.max(0, Math.min(state.scenes.length - 1, idx));
   state.scenes.forEach((s, i) => s.classList.toggle('is-active', i === idx));
+  if (idx !== state.sceneIdx) { state.sceneIdx = idx; syncSceneChrome(); }
+}
+
+function initSceneTracking() {
+  // Desktop: horizontal rail scrolls, each scene is viewport-width.
+  // Mobile:  page scrolls, scenes can be taller than viewport.
+  // Instead of relying on IO thresholds (which break when a scene is taller
+  // than the viewport and never reaches ratio >= 0.5), compute the scene
+  // whose rect overlaps the viewport centre point on each IO callback.
+  function pickActive() {
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    for (let i = 0; i < state.scenes.length; i++) {
+      const r = state.scenes[i].getBoundingClientRect();
+      if (r.left <= cx && cx <= r.right && r.top <= cy && cy <= r.bottom) {
+        setActiveScene(i);
+        return;
+      }
+    }
+  }
+  const io = new IntersectionObserver(pickActive, { threshold: [0, 0.25, 0.5, 0.75, 1] });
+  state.scenes.forEach(s => io.observe(s));
 }
 
 function syncSceneChrome() {
@@ -66,11 +88,7 @@ function syncSceneChrome() {
 
 function goTo(idx) {
   idx = Math.max(0, Math.min(state.scenes.length - 1, idx));
-  const vertical = getComputedStyle(state.rail).flexDirection === 'column';
-  state.rail.scrollTo(
-    vertical ? { top: idx * window.innerHeight, behavior: 'smooth' }
-             : { left: idx * window.innerWidth, behavior: 'smooth' },
-  );
+  state.scenes[idx].scrollIntoView({ block: 'start', inline: 'start', behavior: 'smooth' });
 }
 
 /* ---------- Gift registry ---------- */
@@ -390,9 +408,8 @@ async function init() {
   state.rail = $('#rail');
   state.scenes = $$('.scene');
   syncSceneChrome();
-  updateActiveScene();
-
-  state.rail.addEventListener('scroll', () => requestAnimationFrame(updateActiveScene));
+  setActiveScene(0);
+  initSceneTracking();
 
   $('#prevBtn').addEventListener('click', () => goTo(state.sceneIdx - 1));
   $('#nextBtn').addEventListener('click', () => goTo(state.sceneIdx + 1));

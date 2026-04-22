@@ -904,14 +904,34 @@ body {
   .scene {
     flex: 0 0 auto;
     width: 100vw;
-    height: 100svh;
+    height: auto;
+    min-height: 100svh;
     scroll-snap-align: start;
     scroll-snap-stop: always;
-    padding: 8vh 6vw;
+    align-items: flex-start;
+    padding: 72px 6vw 88px;
   }
-  .chrome-bottom { bottom: 14px; }
+  .scene-hero, .scene-words, .scene-end { align-items: center; }
+  .chrome-top {
+    padding: 14px 16px;
+    gap: 10px;
+    background: linear-gradient(to bottom, var(--bg) 40%, transparent);
+  }
+  .chrome-bottom {
+    bottom: 0;
+    padding: 14px 16px 18px;
+    gap: 12px;
+    background: linear-gradient(to top, var(--bg) 40%, transparent);
+  }
+  .wordmark { font-size: 11px; letter-spacing: 0.3em; }
+  .music-btn { font-size: 9px; letter-spacing: 0.2em; padding: 7px 12px; gap: 6px; }
+  .scene-badge { top: 42px; font-size: 11px; }
+  .scene-hero .scroll-cue { bottom: 80px; }
   .scene-hero .scroll-cue::after { content: "Faire défiler ↓"; }
-  .triptych, .gallery { grid-template-columns: 1fr; gap: 16px; }
+  .triptych { grid-template-columns: 1fr; gap: 16px; }
+  .triptych .ph { height: auto; aspect-ratio: 4 / 3; }
+  .gallery { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .gallery .ph { aspect-ratio: 1 / 1; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .tree-row { flex-direction: column; gap: 20px; }
 
