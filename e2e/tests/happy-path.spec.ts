@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 test("landing without token shows 404 page", async ({ page }) => {
   await page.goto("/");
@@ -29,4 +30,11 @@ test("reserving a gift updates the UI", async ({ page }) => {
   await page.locator('dialog input[name=name]').fill("Sophie");
   await page.locator("dialog button[value=confirm]").click();
   await expect(page.locator(".gift.taken").first()).toBeVisible();
+});
+
+test("no AA axe-core violations on home", async ({ page }) => {
+  const token = process.env.E2E_TOKEN!;
+  await page.goto(`/?k=${token}`);
+  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(results.violations).toEqual([]);
 });
