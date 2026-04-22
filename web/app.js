@@ -83,7 +83,7 @@ function renderGifts() {
     el.dataset.id = g.id;
     const mineFlag = state.reservedGiftIds.has(g.id) ? ' (réservé par vous)' : '';
     el.innerHTML = `
-      <div class="ph"></div>
+      <div class="ph" data-label="cadeau · photo"></div>
       <div class="g-name"></div>
       <div class="g-meta">
         <span class="g-range"></span>
@@ -273,15 +273,32 @@ function applyTimeline() {
     list.appendChild(el);
   }
 }
+const TRIPTYCH_PLACEHOLDERS = ['photo · main du bébé', 'photo · portrait', 'photo · avec maman'];
+const GALLERY_PLACEHOLDERS = [
+  'photo · portrait 01', 'photo · détail main', 'photo · famille',
+  'photo · sommeil', 'photo · premier sourire',
+];
+
 function renderPhotos() {
   const grids = [
-    { el: document.getElementById('triptychGrid'), section: 'triptych' },
-    { el: document.getElementById('galleryGrid'),  section: 'gallery' },
+    { el: document.getElementById('triptychGrid'), section: 'triptych', placeholders: TRIPTYCH_PLACEHOLDERS },
+    { el: document.getElementById('galleryGrid'),  section: 'gallery',  placeholders: GALLERY_PLACEHOLDERS },
   ];
-  for (const { el, section } of grids) {
+  for (const { el, section, placeholders } of grids) {
     if (!el) continue;
     el.innerHTML = '';
     const items = state.photos.filter((p) => p.section === section);
+    // No uploads yet? Fall back to the original design placeholders so the
+    // scene still holds visually before the parents upload anything.
+    if (items.length === 0) {
+      for (const label of placeholders) {
+        const ph = document.createElement('div');
+        ph.className = 'ph';
+        ph.dataset.label = label;
+        el.appendChild(ph);
+      }
+      continue;
+    }
     for (const p of items) {
       const pic = document.createElement('picture');
       pic.className = 'ph';

@@ -45,7 +45,8 @@
   @sw path /sw.js
   header @sw Cache-Control "no-cache"
 
-  handle /admin* {
+  @adminSpa path /admin /admin/*
+  handle @adminSpa {
     header Cache-Control "no-store"
     root * /srv/web
     rewrite * /admin.html

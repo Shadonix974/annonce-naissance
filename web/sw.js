@@ -1,4 +1,4 @@
-const CACHE = 'annonce-v1';
+const CACHE = 'annonce-v2';
 const CORE = [
   '/', '/index.html', '/styles.css', '/app.js', '/manifest.webmanifest',
   '/icons/icon-192.png', '/icons/icon-512.png', '/icons/favicon.svg',
@@ -18,6 +18,11 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
+
+  // Cross-origin (Google Fonts, CDNs…): let the browser handle them directly.
+  // Without this, a pathname-based regex below would match fonts.gstatic.com/…/xxx.woff2
+  // and the SW would corrupt the request (net::ERR_FAILED on reload).
+  if (url.origin !== location.origin) return;
 
   // Admin and SSE: never cache
   if (url.pathname.startsWith('/api/admin/') || url.pathname === '/api/stream') return;

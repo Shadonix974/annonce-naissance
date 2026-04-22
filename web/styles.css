@@ -257,6 +257,9 @@ body {
   opacity: 0.45;
   animation: pulse 3s ease-in-out infinite;
 }
+.scene-hero .scroll-cue::after {
+  content: "Faire défiler  →";
+}
 @keyframes pulse {
   0%, 100% { opacity: 0.3; transform: translateX(0); }
   50% { opacity: 0.7; transform: translateX(6px); }
@@ -834,15 +837,16 @@ body {
   .tree-row { gap: 24px; }
 }
 
-/* ---- Photos (real content) -------------------------------- */
-.ph {
-  display: block;
+/* ---- Photos (real content) --------------------------------
+   Only applies when the .ph element actually contains an image.
+   Empty .ph keeps the cream-hatched placeholder rule defined at
+   the top of this file (with its data-label rendered via ::after). */
+.ph:has(> img), .ph:has(> picture) {
   background: oklch(0.22 0.045 255);
-  overflow: hidden;
-  border-radius: 2px;
-  position: relative;
+  background-image: none;
 }
-.ph > img {
+.ph:has(> img)::after, .ph:has(> picture)::after { content: none; }
+.ph > img, .ph > picture > img {
   display: block;
   width: 100%;
   height: auto;
@@ -905,8 +909,8 @@ body {
     scroll-snap-stop: always;
     padding: 8vh 6vw;
   }
-  .chrome-top, .chrome-bottom { bottom: 14px; top: auto; }
-  .scroll-cue::after { content: "Faire défiler ↓"; }
+  .chrome-bottom { bottom: 14px; }
+  .scene-hero .scroll-cue::after { content: "Faire défiler ↓"; }
   .triptych, .gallery { grid-template-columns: 1fr; gap: 16px; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .tree-row { flex-direction: column; gap: 20px; }

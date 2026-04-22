@@ -45,7 +45,11 @@
   @sw path /sw.js
   header @sw Cache-Control "no-cache"
 
-  handle /admin* {
+  # Exact /admin + any sub-path under /admin/ (with trailing slash).
+  # Intentionally NOT /admin* which would also capture /admin.css, /admin.js,
+  # /admin.html — those must fall through to the default handler.
+  @adminSpa path /admin /admin/*
+  handle @adminSpa {
     header Cache-Control "no-store"
     root * /srv/web
     rewrite * /admin.html
