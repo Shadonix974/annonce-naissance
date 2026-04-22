@@ -102,7 +102,7 @@ test("upload rejects empty alt (server-side a11y guard)", async () => {
   expect(await res.json()).toMatchObject({ error: "alt_required" });
 }, 30_000);
 
-test("upload happy path creates row and 9 MinIO objects", async () => {
+test("upload happy path creates row and 10 MinIO objects (9 variants + original)", async () => {
   const app = await buildApp();
   const cookie = await adminCookie(app);
   const fd = new FormData();
@@ -117,12 +117,12 @@ test("upload happy path creates row and 9 MinIO objects", async () => {
   expect(photo.height).toBe(200);
   expect(photo.blurhash).toMatch(/^[A-Za-z0-9+/:$@#*,;=?!~{}|<>&^_-]{20,}$/);
 
-  // Verify 9 objects in MinIO
+  // Verify 10 objects in MinIO (9 variants + original)
   const keys: string[] = [];
   for await (const o of minio.listObjects(BUCKET, `photos/${photo.id}/`, true)) {
     if (o.name) keys.push(o.name);
   }
-  expect(keys).toHaveLength(9);
+  expect(keys).toHaveLength(10);
   expect(keys.some(k => k.endsWith("/thumb.avif"))).toBe(true);
   expect(keys.some(k => k.endsWith("/medium.webp"))).toBe(true);
   expect(keys.some(k => k.endsWith("/full.jpg"))).toBe(true);
@@ -227,4 +227,39 @@ test("GET /photos/:id/thumb.avif via _k cookie returns 200", async () => {
   }));
   expect(res.status).toBe(200);
   expect(res.headers.get("content-type")).toBe("image/avif");
+}, 60_000);
+
+test("upload writes photos/:id/original.jpg", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+  const fd = new FormData();
+  fd.append("file", new Blob([await makePng(300, 200)], { type: "image/png" }), "x.png");
+  fd.append("section", "gallery");
+  fd.append("alt", "orig test");
+  const up = await app.fetch(uploadReq(cookie, fd));
+  expect(up.status).toBe(201);
+  const photo = await up.json() as { id: string };
+
+  const keys: string[] = [];
+  for await (const o of minio.listObjects(BUCKET, `photos/${photo.id}/`, true)) {
+    if (o.name) keys.push(o.name);
+  }
+  // 9 variants + 1 original
+  expect(keys).toHaveLength(10);
+  expect(keys.some(k => k === `photos/${photo.id}/original.jpg`)).toBe(true);
+}, 60_000);
+
+test("upload with cropped=1 flag persists cropped column", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+  const fd = new FormData();
+  fd.append("file", new Blob([await makePng(300, 200)], { type: "image/png" }), "x.png");
+  fd.append("section", "triptych");
+  fd.append("alt", "cropped test");
+  fd.append("cropped", "1");
+  const up = await app.fetch(uploadReq(cookie, fd));
+  expect(up.status).toBe(201);
+  const photo = await up.json() as { id: string; cropped: boolean; version: number };
+  expect(photo.cropped).toBe(true);
+  expect(photo.version).toBe(1);
 }, 60_000);

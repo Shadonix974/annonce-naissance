@@ -5,8 +5,8 @@ import { zValidator } from "../../lib/validate.js";
 import { z } from "zod";
 import { db, schema } from "../../db/client.js";
 import { NotFoundError, ValidationError } from "../../lib/errors.js";
-import { objectKey, putBuffer, removePrefix } from "../../lib/minio.js";
-import { processPhoto } from "../../lib/sharp-pipeline.js";
+import { objectKey, originalKey, putBuffer, removePrefix } from "../../lib/minio.js";
+import { normaliseOriginal, processPhoto } from "../../lib/sharp-pipeline.js";
 import { assertSameOrigin } from "../../lib/origin-check.js";
 import { requireAdmin } from "../../middleware/require-admin.js";
 
@@ -27,6 +27,7 @@ app.post("/", async (c) => {
   const section = String(form["section"] ?? "");
   const alt = String(form["alt"] ?? "");
   const position = Number(form["position"] ?? 0);
+  const cropped = String(form["cropped"] ?? "") === "1";
 
   if (!(file instanceof File)) throw new ValidationError("missing_file");
   if (!ACCEPTED_MIME.has(file.type)) throw new ValidationError("unsupported_type");
@@ -35,12 +36,16 @@ app.post("/", async (c) => {
   if (!alt.trim()) throw new ValidationError("alt_required");
 
   const buf = Buffer.from(await file.arrayBuffer());
-  const processed = await processPhoto(buf);
+  const [processed, originalJpg] = await Promise.all([
+    processPhoto(buf),
+    normaliseOriginal(buf),
+  ]);
 
   const id = randomUUID();
-  await Promise.all(
-    processed.variants.map((v) => putBuffer(objectKey(id, v.size, v.format), v.buffer, v.contentType)),
-  );
+  await Promise.all([
+    ...processed.variants.map((v) => putBuffer(objectKey(id, v.size, v.format), v.buffer, v.contentType)),
+    putBuffer(originalKey(id), originalJpg, "image/jpeg"),
+  ]);
 
   type InsertValues = {
     id: string;
@@ -50,6 +55,7 @@ app.post("/", async (c) => {
     width: number;
     height: number;
     blurhash: string | null;
+    cropped: boolean;
   };
 
   const values: InsertValues = {
@@ -60,6 +66,7 @@ app.post("/", async (c) => {
     width: processed.width,
     height: processed.height,
     blurhash: processed.blurhash ?? null,
+    cropped,
   };
 
   const [row] = await db.insert(photos).values(values).returning();
