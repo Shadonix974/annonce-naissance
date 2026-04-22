@@ -197,17 +197,19 @@ function startMusic() {
   const notes = [293.66, 369.99, 440.00, 329.63];
   const master = ctx.createGain();
   master.gain.value = 0;
-  master.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 1.5);
+  // Bumped from 0.08 → 0.22 so it's actually audible on laptop speakers
+  // (effective level through reverb × osc was ~0.01, borderline silent).
+  master.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 1.5);
   master.connect(ctx.destination);
 
   const reverb = ctx.createGain();
-  reverb.gain.value = 0.3;
+  reverb.gain.value = 0.7;
   reverb.connect(master);
 
   const step = 1.6;
 
-  const interval = setInterval(() => {
-    if (!state.musicPlaying) { clearInterval(interval); return; }
+  function playBar() {
+    if (!state.musicPlaying) return;
     const now = ctx.currentTime;
     notes.forEach((freq, i) => {
       const osc = ctx.createOscillator();
@@ -216,12 +218,20 @@ function startMusic() {
       osc.frequency.value = freq;
       const t = now + i * step;
       g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.4, t + 0.2);
+      g.gain.linearRampToValueAtTime(0.5, t + 0.2);
       g.gain.exponentialRampToValueAtTime(0.001, t + step * 0.9);
       osc.connect(g); g.connect(reverb);
       osc.start(t);
       osc.stop(t + step);
     });
+  }
+
+  // Play the first bar immediately instead of waiting 6.4s for setInterval
+  // to fire; subsequent bars loop on interval.
+  playBar();
+  const interval = setInterval(() => {
+    if (!state.musicPlaying) { clearInterval(interval); return; }
+    playBar();
   }, step * notes.length * 1000);
 
   audioNodes.push({ master, interval });
