@@ -184,67 +184,57 @@ function openGiftModal(gift) {
   dlg.showModal();
 }
 
-/* ---------- Ambient music (Web Audio, subtle) ---------- */
-let audioCtx = null;
-let audioNodes = [];
+/* ---------- Ambient music (HTMLAudioElement, real file) ----------
+   The audio file is served at /music.mp3 (dropped into web/music.mp3).
+   The <audio> element in index.html preloads metadata only; the body
+   is streamed when the user toggles playback. Fade in/out is driven
+   by rAF on .volume for a gentle start/stop. */
+const MUSIC_TARGET_VOLUME = 0.5;
+let musicFadeRaf = 0;
+
+function fadeMusic(audio, from, to, durationMs, done) {
+  if (musicFadeRaf) cancelAnimationFrame(musicFadeRaf);
+  const start = performance.now();
+  function tick(now) {
+    const p = Math.min(1, (now - start) / durationMs);
+    audio.volume = Math.max(0, Math.min(1, from + (to - from) * p));
+    if (p < 1) musicFadeRaf = requestAnimationFrame(tick);
+    else { musicFadeRaf = 0; if (done) done(); }
+  }
+  musicFadeRaf = requestAnimationFrame(tick);
+}
 
 function startMusic() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const ctx = audioCtx;
-  if (ctx.state === 'suspended') ctx.resume();
-
-  // A gentle four-note loop reminiscent of a lullaby: D4, F#4, A4, E4
-  const notes = [293.66, 369.99, 440.00, 329.63];
-  const master = ctx.createGain();
-  master.gain.value = 0;
-  // Bumped from 0.08 → 0.22 so it's actually audible on laptop speakers
-  // (effective level through reverb × osc was ~0.01, borderline silent).
-  master.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 1.5);
-  master.connect(ctx.destination);
-
-  const reverb = ctx.createGain();
-  reverb.gain.value = 0.7;
-  reverb.connect(master);
-
-  const step = 1.6;
-
-  function playBar() {
-    if (!state.musicPlaying) return;
-    const now = ctx.currentTime;
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      const t = now + i * step;
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.5, t + 0.2);
-      g.gain.exponentialRampToValueAtTime(0.001, t + step * 0.9);
-      osc.connect(g); g.connect(reverb);
-      osc.start(t);
-      osc.stop(t + step);
-    });
+  const audio = document.getElementById('bgMusic');
+  if (!audio) return;
+  audio.volume = 0;
+  const p = audio.play();
+  // Autoplay policies: if the promise rejects (e.g. no user gesture, file
+  // missing), flip the state back off so the UI stays consistent.
+  if (p && typeof p.then === 'function') {
+    p.then(() => fadeMusic(audio, 0, MUSIC_TARGET_VOLUME, 1500))
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn('Music playback failed:', err);
+        state.musicPlaying = false;
+        const btn = $('#musicBtn');
+        if (btn) {
+          btn.classList.remove('playing');
+          btn.querySelector('.label').textContent = 'Musique · off';
+        }
+      });
+  } else {
+    fadeMusic(audio, 0, MUSIC_TARGET_VOLUME, 1500);
   }
-
-  // Play the first bar immediately instead of waiting 6.4s for setInterval
-  // to fire; subsequent bars loop on interval.
-  playBar();
-  const interval = setInterval(() => {
-    if (!state.musicPlaying) { clearInterval(interval); return; }
-    playBar();
-  }, step * notes.length * 1000);
-
-  audioNodes.push({ master, interval });
 }
 
 function stopMusic() {
-  audioNodes.forEach(({ master, interval }) => {
-    if (interval) clearInterval(interval);
-    if (master && audioCtx) {
-      master.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.8);
-    }
+  const audio = document.getElementById('bgMusic');
+  if (!audio) return;
+  fadeMusic(audio, audio.volume, 0, 800, () => {
+    audio.pause();
+    audio.currentTime = 0;
   });
-  audioNodes = [];
 }
 
 function toggleMusic() {
