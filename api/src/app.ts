@@ -6,6 +6,7 @@ import adminGifts from "./routes/admin/gifts.js";
 import adminTweaks from "./routes/admin/tweaks.js";
 import giftsRoute from "./routes/gifts.js";
 import stateRoute from "./routes/state.js";
+import streamRoute from "./routes/stream.js";
 
 export const app = new Hono();
 app.use("*", requestLogger);
@@ -16,3 +17,4 @@ app.route("/api/admin/tweaks", adminTweaks);
 app.route("/api/admin/gifts", adminGifts);
 app.route("/api/state", stateRoute);
 app.route("/api/gifts", giftsRoute);
+app.route("/api/stream", streamRoute);
