@@ -31,10 +31,15 @@ self.addEventListener('fetch', (e) => {
   if (url.search) return;
 
   // Initial state: network-first, cache fallback.
+  // NOTE: every `r.clone()` MUST happen synchronously right after fetch resolves.
+  // If we delayed clone() inside the caches.open(...) async chain, the Response
+  // body would already be locked by the caller consuming `r`, throwing
+  // "Response body is already used".
   if (url.pathname === '/api/state') {
     e.respondWith(
       fetch(e.request).then((r) => {
-        caches.open(CACHE).then((c) => c.put(e.request, r.clone()));
+        const copy = r.clone();
+        caches.open(CACHE).then((c) => c.put(e.request, copy));
         return r;
       }).catch(() => caches.match(e.request))
     );
@@ -44,7 +49,8 @@ self.addEventListener('fetch', (e) => {
   // Photos: cache-first with long TTL (only reached for URLs with no query).
   if (url.pathname.startsWith('/photos/')) {
     e.respondWith(caches.match(e.request).then((hit) => hit ?? fetch(e.request).then((r) => {
-      caches.open(CACHE).then((c) => c.put(e.request, r.clone()));
+      const copy = r.clone();
+      caches.open(CACHE).then((c) => c.put(e.request, copy));
       return r;
     })));
     return;
@@ -54,7 +60,8 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname === '/' || url.pathname.startsWith('/icons/') || /\.(css|js|woff2|png|svg|webmanifest)$/.test(url.pathname)) {
     e.respondWith(caches.match(e.request).then((hit) => {
       const fresh = fetch(e.request).then((r) => {
-        caches.open(CACHE).then((c) => c.put(e.request, r.clone()));
+        const copy = r.clone();
+        caches.open(CACHE).then((c) => c.put(e.request, copy));
         return r;
       });
       return hit ?? fresh;

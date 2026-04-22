@@ -476,9 +476,11 @@ async function enqueueUploads(files) {
       fd.append('section', section);
       fd.append('alt', res.alt);
       fd.append('cropped', '1');
-      // Strictly increasing position so batch uploads preserve their order in the
-      // admin grid; the user can drag to reorder afterwards.
-      const position = Date.now() + i;
+      // Strictly increasing position so batch uploads preserve their order in
+      // the admin grid; the user can drag to reorder afterwards. Epoch SECONDS
+      // (not ms) to stay within PostgreSQL int32 — photos.position is integer,
+      // max 2,147,483,647; Date.now() in ms is ~1.77e12 and would overflow.
+      const position = Math.floor(Date.now() / 1000) + i;
       fd.append('position', String(position));
       // Toast shown AFTER the modal closes (else it's occluded by the dialog).
       showToast(`Envoi ${i + 1}/${files.length}…`);
