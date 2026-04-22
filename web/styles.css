@@ -1021,3 +1021,18 @@ body {
   .timeline::before { display: none; }
   .tree-row { gap: 24px; }
 }
+
+/* ---- Photos (real content) -------------------------------- */
+.ph {
+  display: block;
+  background: oklch(0.22 0.045 255);
+  overflow: hidden;
+  border-radius: 2px;
+  position: relative;
+}
+.ph > img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}

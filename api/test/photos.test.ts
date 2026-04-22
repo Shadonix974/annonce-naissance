@@ -197,3 +197,22 @@ test("GET /photos/:id/thumb.avif after upload returns 200 with correct content-t
   const body = await res.arrayBuffer();
   expect(body.byteLength).toBeGreaterThan(0);
 }, 60_000);
+
+test("GET /photos/:id/thumb.avif via _k cookie returns 200", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+  const fd = new FormData();
+  fd.append("file", new Blob([await makePng(300, 200)], { type: "image/png" }), "x.png");
+  fd.append("section", "triptych");
+  fd.append("alt", "cookie test");
+  const up = await app.fetch(uploadReq(cookie, fd));
+  expect(up.status).toBe(201);
+  const photo = await up.json() as { id: string };
+
+  const token = (await getAccessToken())!;
+  const res = await app.fetch(new Request(`http://x/photos/${photo.id}/thumb.avif`, {
+    headers: { cookie: `_k=${token}` },
+  }));
+  expect(res.status).toBe(200);
+  expect(res.headers.get("content-type")).toBe("image/avif");
+}, 60_000);

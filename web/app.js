@@ -204,7 +204,33 @@ function applyTimeline() {
     list.appendChild(el);
   }
 }
-function renderPhotos()  { /* implemented in Task 29 */ }
+function renderPhotos() {
+  const grids = [
+    { el: document.getElementById('triptychGrid'), section: 'triptych' },
+    { el: document.getElementById('galleryGrid'),  section: 'gallery' },
+  ];
+  for (const { el, section } of grids) {
+    if (!el) continue;
+    el.innerHTML = '';
+    const items = state.photos.filter((p) => p.section === section);
+    for (const p of items) {
+      const pic = document.createElement('picture');
+      pic.className = 'ph';
+      const sizesAttr = section === 'triptych' ? '(max-width: 820px) 100vw, 33vw' : '(max-width: 820px) 100vw, 50vw';
+      pic.innerHTML = `
+        <source type="image/avif" srcset="/photos/${p.id}/thumb.avif 400w, /photos/${p.id}/medium.avif 1200w, /photos/${p.id}/full.avif 2000w" sizes="${sizesAttr}">
+        <source type="image/webp" srcset="/photos/${p.id}/thumb.webp 400w, /photos/${p.id}/medium.webp 1200w, /photos/${p.id}/full.webp 2000w" sizes="${sizesAttr}">
+        <img src="/photos/${p.id}/medium.jpg"
+             srcset="/photos/${p.id}/thumb.jpg 400w, /photos/${p.id}/medium.jpg 1200w, /photos/${p.id}/full.jpg 2000w"
+             sizes="${sizesAttr}"
+             width="${p.width}" height="${p.height}"
+             alt="${String(p.alt || '').replace(/"/g, '&quot;')}"
+             loading="lazy" decoding="async">
+      `;
+      el.appendChild(pic);
+    }
+  }
+}
 function subscribeSSE()  { /* implemented in Task 31 */ }
 function registerServiceWorker() { /* implemented in Task 34 */ }
 
@@ -228,6 +254,9 @@ async function init() {
   if (!data) { showPrivateLanding(); return; }
 
   Object.assign(state, data);
+
+  // Set _k cookie so <img src="/photos/..."> requests carry the token.
+  document.cookie = `_k=${encodeURIComponent(token)}; Path=/; SameSite=Strict; Max-Age=31536000`;
 
   state.rail = $('#rail');
   state.scenes = $$('.scene');
