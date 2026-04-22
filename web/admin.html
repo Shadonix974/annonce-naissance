@@ -44,13 +44,13 @@
     </aside>
   </div>
 
-  <dialog id="cropModal" class="crop-modal">
+  <dialog id="cropModal" class="crop-modal" aria-labelledby="cropTitle">
     <form method="dialog" class="crop-modal-inner">
       <div class="crop-stage">
         <img id="cropImage" alt="">
       </div>
       <div class="crop-controls">
-        <div class="crop-title">Cadrer la photo</div>
+        <div class="crop-title" id="cropTitle">Cadrer la photo</div>
         <div class="ratios" id="cropRatios"></div>
         <label class="alt-field">Alt (description pour a11y, obligatoire)
           <input id="cropAlt" maxlength="300" required>
@@ -64,9 +64,9 @@
     </form>
   </dialog>
 
-  <dialog id="deleteModal" class="delete-modal">
+  <dialog id="deleteModal" class="delete-modal" aria-labelledby="deleteTitle">
     <form method="dialog" class="delete-modal-inner">
-      <div class="delete-title">Supprimer cette photo ?</div>
+      <div class="delete-title" id="deleteTitle">Supprimer cette photo ?</div>
       <div class="delete-body">Cette action est définitive.</div>
       <div class="actions">
         <button type="button" class="secondary" id="deleteCancel">Annuler</button>
@@ -75,7 +75,7 @@
     </form>
   </dialog>
 
-  <div id="toast" class="toast" hidden></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
   <script type="module" src="/admin.js"></script>
 </body>
