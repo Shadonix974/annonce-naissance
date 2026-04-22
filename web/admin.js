@@ -70,9 +70,14 @@ async function bootstrap() {
 
 async function enterAdmin() {
   show('loginPanel', false); show('adminPanel', true);
-  setupTabs();
-  await loadAccessLink();
+  try {
+    await loadAccessLink();
+  } catch {
+    alert('Impossible de charger le lien privé. Rechargez la page.');
+    return;
+  }
   setPreviewSrc();
+  setupTabs();
 }
 
 function setupTabs() {
@@ -99,6 +104,11 @@ function setupTabs() {
 let CURRENT_TOKEN = '';
 async function loadAccessLink() {
   const r = await fetch('/api/admin/access-token/link');
+  if (!r.ok) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to load access link:', r.status);
+    throw new Error('access_link_failed');
+  }
   const j = await r.json();
   CURRENT_TOKEN = j.token;
 }
@@ -107,7 +117,6 @@ function setPreviewSrc() {
   $('#previewFrame').src = `/?k=${encodeURIComponent(CURRENT_TOKEN)}`;
 }
 
-// Stubs — filled by Tasks 36-39
 async function renderTweaksTab() {
   const tab = $('#tab-tweaks');
   tab.innerHTML = '';
@@ -400,9 +409,52 @@ async function refreshTimelineList() {
 
     const actions = document.createElement('div');
     actions.style.marginTop = '8px';
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'secondary';
+    editBtn.textContent = 'Éditer';
+    editBtn.addEventListener('click', async () => {
+      const dateLabel = prompt('Date (libre)', ev.dateLabel) ?? ev.dateLabel;
+      const text = prompt('Texte', ev.text) ?? ev.text;
+      const positionStr = prompt('Position', String(ev.position)) ?? String(ev.position);
+      const position = Number(positionStr);
+      await fetch(`/api/admin/timeline/${ev.id}`, {
+        method: 'PATCH', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ dateLabel, text, position: Number.isFinite(position) ? position : ev.position }),
+      });
+      await refreshTimelineList();
+    });
+    actions.appendChild(editBtn);
+
+    const nowBtn = document.createElement('button');
+    nowBtn.className = 'secondary';
+    nowBtn.textContent = ev.isNow ? '✓ Maintenant' : 'Marquer maintenant';
+    nowBtn.style.marginLeft = '8px';
+    nowBtn.addEventListener('click', async () => {
+      const newIsNow = !ev.isNow;
+      if (newIsNow) {
+        const currentData = await loadState();
+        for (const other of currentData.timeline) {
+          if (other.id !== ev.id && other.isNow) {
+            await fetch(`/api/admin/timeline/${other.id}`, {
+              method: 'PATCH', headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ isNow: false }),
+            });
+          }
+        }
+      }
+      await fetch(`/api/admin/timeline/${ev.id}`, {
+        method: 'PATCH', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ isNow: newIsNow }),
+      });
+      await refreshTimelineList();
+    });
+    actions.appendChild(nowBtn);
+
     const delBtn = document.createElement('button');
     delBtn.className = 'danger';
     delBtn.textContent = 'Supprimer';
+    delBtn.style.marginLeft = '8px';
     delBtn.addEventListener('click', async () => {
       if (!confirm('Supprimer ?')) return;
       await fetch(`/api/admin/timeline/${ev.id}`, { method: 'DELETE' });
