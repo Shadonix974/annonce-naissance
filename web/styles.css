@@ -1111,3 +1111,19 @@ body {
   .rail { scroll-behavior: auto; scroll-snap-type: none; }
   .reveal { opacity: 1 !important; transform: none !important; }
 }
+
+/* ============================================================
+   Focus ring — visible outline for keyboard navigation
+   ============================================================ */
+button, a, input, textarea, select { outline: none; }
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+.seg:focus-visible,
+.swatch:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
