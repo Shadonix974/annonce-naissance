@@ -417,99 +417,206 @@ async function renderTweaksTab() {
 async function renderPhotosTab() {
   const tab = $('#tab-photos');
   tab.innerHTML = `
-    <div class="section-title">Ajouter une photo</div>
-    <form id="photoUpload">
-      <label>Fichier <input type="file" name="file" accept="image/*" required></label>
-      <label>Section
-        <select name="section">
-          <option value="triptych">Triptyque (scène 03)</option>
+    <div class="section-title">Ajouter des photos</div>
+    <label class="dropzone" id="photoDropzone">
+      <div>
+        <div>📸 Glissez-déposez ou cliquez pour sélectionner</div>
+        <div class="hint">Plusieurs fichiers acceptés. Cadrez chaque photo avant envoi.</div>
+      </div>
+      <input id="photoInput" type="file" accept="image/*" multiple capture="environment">
+    </label>
+    <div class="row">
+      <label>Section par défaut
+        <select id="photoDefaultSection">
           <option value="gallery">Galerie (scène 07)</option>
+          <option value="triptych">Triptyque (scène 03)</option>
         </select>
       </label>
-      <label>Alt (description pour a11y, obligatoire)
-        <input name="alt" required maxlength="300">
-      </label>
-      <label>Position <input name="position" type="number" value="0" min="0"></label>
-      <button type="submit">Uploader</button>
-      <p id="photoUploadStatus"></p>
-    </form>
+    </div>
     <div class="section-title">Existantes</div>
-    <div id="photoList"></div>
+    <div id="photosGridTriptych" class="photos-grid"></div>
+    <div class="section-title" style="margin-top:16px;">Galerie</div>
+    <div id="photosGridGallery" class="photos-grid"></div>
   `;
 
-  const form = $('#photoUpload');
-  form.addEventListener('submit', async (e) => {
+  const dz = document.getElementById('photoDropzone');
+  const input = document.getElementById('photoInput');
+
+  dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('is-drop'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('is-drop'));
+  dz.addEventListener('drop', (e) => {
     e.preventDefault();
-    if (!form.alt.value.trim()) return;
-    const fd = new FormData(form);
-    $('#photoUploadStatus').textContent = 'Upload et traitement…';
-    const r = await fetch('/api/admin/photos', { method: 'POST', body: fd });
-    if (!r.ok) { $('#photoUploadStatus').textContent = 'Erreur ' + r.status; return; }
-    $('#photoUploadStatus').textContent = 'OK.';
-    form.reset();
-    await refreshPhotoList();
-    // Reload iframe preview to show the new photo
-    $('#previewFrame').contentWindow.location.reload();
+    dz.classList.remove('is-drop');
+    const files = Array.from(e.dataTransfer?.files ?? []).filter((f) => f.type.startsWith('image/'));
+    if (files.length) enqueueUploads(files);
+  });
+  input.addEventListener('change', () => {
+    const files = Array.from(input.files ?? []);
+    if (files.length) enqueueUploads(files);
+    input.value = '';
   });
 
-  await refreshPhotoList();
+  await refreshPhotoGrid();
 }
 
-async function refreshPhotoList() {
-  const data = await loadState();
-  const list = $('#photoList');
-  list.innerHTML = '';
-  for (const p of data.photos) {
-    const el = document.createElement('div');
-    el.className = 'item';
-    const img = document.createElement('img');
-    img.src = `/photos/${p.id}/thumb.jpg`;
-    img.width = 120;
-    img.style.float = 'left';
-    img.style.marginRight = '12px';
-    el.appendChild(img);
-
-    const meta = document.createElement('div');
-    meta.innerHTML = `<b></b> — <span></span> — pos <span></span><br><small></small>`;
-    meta.querySelector('b').textContent = p.section;
-    meta.querySelector('span:nth-of-type(1)').textContent = `${p.width}×${p.height}`;
-    meta.querySelector('span:nth-of-type(2)').textContent = String(p.position);
-    meta.querySelector('small').textContent = p.alt || '(sans alt)';
-    el.appendChild(meta);
-
-    const actions = document.createElement('div');
-    actions.style.marginTop = '8px';
-    actions.style.clear = 'both';
-    const editBtn = document.createElement('button');
-    editBtn.className = 'secondary';
-    editBtn.textContent = 'Éditer alt/pos';
-    editBtn.addEventListener('click', async () => {
-      const alt = prompt('Alt text', p.alt) ?? p.alt;
-      const positionStr = prompt('Position', String(p.position)) ?? String(p.position);
-      const position = Number(positionStr);
-      await fetch(`/api/admin/photos/${p.id}`, {
-        method: 'PATCH', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ alt, position: Number.isFinite(position) ? position : p.position }),
-      });
-      await refreshPhotoList();
-      $('#previewFrame').contentWindow.location.reload();
-    });
-    const delBtn = document.createElement('button');
-    delBtn.className = 'danger';
-    delBtn.textContent = 'Supprimer';
-    delBtn.style.marginLeft = '8px';
-    delBtn.addEventListener('click', async () => {
-      if (!confirm('Supprimer cette photo ?')) return;
-      await fetch(`/api/admin/photos/${p.id}`, { method: 'DELETE' });
-      await refreshPhotoList();
-      $('#previewFrame').contentWindow.location.reload();
-    });
-    actions.appendChild(editBtn);
-    actions.appendChild(delBtn);
-    el.appendChild(actions);
-
-    list.appendChild(el);
+let _uploadQueueActive = false;
+async function enqueueUploads(files) {
+  if (_uploadQueueActive) return; // Guard against double-open of the crop modal.
+  _uploadQueueActive = true;
+  try {
+    const section = document.getElementById('photoDefaultSection').value;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const queueHint = files.length > 1 ? `Photo ${i + 1}/${files.length}` : '';
+      const downscaled = await downscaleForCrop(file);
+      const res = await openCropModal({ source: downscaled, section, queueHint });
+      if (!res) { showToast('Envoi annulé.'); break; }
+      const fd = new FormData();
+      fd.append('file', res.blob, 'crop.jpg');
+      fd.append('section', section);
+      fd.append('alt', res.alt);
+      fd.append('cropped', '1');
+      const position = Date.now() % 1_000_000; // appended at end, resolved on reorder
+      fd.append('position', String(position));
+      // Toast shown AFTER the modal closes (else it's occluded by the dialog).
+      showToast(`Envoi ${i + 1}/${files.length}…`);
+      const r = await fetch('/api/admin/photos', { method: 'POST', body: fd });
+      if (!r.ok) { showToast(`Erreur ${r.status}`); break; }
+    }
+  } finally {
+    _uploadQueueActive = false;
   }
+  await refreshPhotoGrid();
+  document.getElementById('previewFrame').contentWindow.location.reload();
+}
+
+async function refreshPhotoGrid() {
+  const data = await loadState();
+  const Sortable = await loadSortable();
+  const grids = [
+    { id: 'photosGridTriptych', section: 'triptych' },
+    { id: 'photosGridGallery',  section: 'gallery'  },
+  ];
+  for (const { id, section } of grids) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.innerHTML = '';
+    const items = data.photos.filter((p) => p.section === section).sort((a, b) => a.position - b.position);
+    for (const p of items) {
+      el.appendChild(photoCard(p));
+    }
+    Sortable.create(el, {
+      group: { name: 'photos', pull: true, put: true },
+      animation: 150,
+      delay: 200,
+      delayOnTouchOnly: true,
+      onEnd: () => persistOrder(),
+    });
+  }
+}
+
+function photoCard(p) {
+  const card = document.createElement('div');
+  card.className = 'photo-card';
+  card.dataset.id = p.id;
+
+  const img = document.createElement('img');
+  img.className = 'thumb';
+  img.src = `/photos/${p.id}/thumb.jpg?v=${p.version}`;
+  img.alt = p.alt || '';
+  card.appendChild(img);
+
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  const altInput = document.createElement('input');
+  altInput.value = p.alt || '';
+  altInput.placeholder = 'alt (a11y)';
+  altInput.maxLength = 300;
+  altInput.addEventListener('change', async () => {
+    if (!altInput.value.trim()) { altInput.value = p.alt || ''; return; }
+    const r = await fetch(`/api/admin/photos/${p.id}`, {
+      method: 'PATCH', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ alt: altInput.value.trim() }),
+    });
+    if (r.ok) {
+      p.alt = altInput.value.trim();
+      showToast('Alt mis à jour.');
+    } else {
+      altInput.value = p.alt || '';
+      showToast(`Erreur ${r.status}`);
+    }
+  });
+  const badge = document.createElement('div');
+  badge.className = 'badge';
+  badge.textContent = `${p.width}×${p.height} · v${p.version}`;
+  meta.appendChild(altInput);
+  meta.appendChild(badge);
+  card.appendChild(meta);
+
+  const actions = document.createElement('div');
+  actions.className = 'card-actions';
+  const cropBtn = document.createElement('button');
+  cropBtn.className = 'secondary';
+  cropBtn.textContent = '✂ Recadrer';
+  cropBtn.addEventListener('click', async () => {
+    if (_uploadQueueActive) return;
+    _uploadQueueActive = true;
+    try {
+      const res = await openRecropModal({
+        sourceUrl: `/api/admin/photos/${p.id}/original`,
+        section: p.section,
+        initialAlt: p.alt || '',
+      });
+      if (!res) return;
+      showToast('Recadrage…');
+      const r = await fetch(`/api/admin/photos/${p.id}/recrop`, {
+        method: 'PATCH', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ x: res.x, y: res.y, width: res.width, height: res.height }),
+      });
+      if (!r.ok) { showToast(`Erreur ${r.status}`); return; }
+      showToast('Recadré ✓');
+      await refreshPhotoGrid();
+      document.getElementById('previewFrame').contentWindow.location.reload();
+    } finally {
+      _uploadQueueActive = false;
+    }
+  });
+  const delBtn = document.createElement('button');
+  delBtn.className = 'danger';
+  delBtn.textContent = '🗑';
+  delBtn.addEventListener('click', async () => {
+    if (!(await openDeleteModal())) return;
+    const r = await fetch(`/api/admin/photos/${p.id}`, { method: 'DELETE' });
+    if (!r.ok) { showToast(`Erreur ${r.status}`); return; }
+    showToast('Supprimé ✓');
+    await refreshPhotoGrid();
+    document.getElementById('previewFrame').contentWindow.location.reload();
+  });
+  actions.appendChild(cropBtn);
+  actions.appendChild(delBtn);
+  card.appendChild(actions);
+
+  return card;
+}
+
+async function persistOrder() {
+  const order = [];
+  for (const { id, section } of [
+    { id: 'photosGridTriptych', section: 'triptych' },
+    { id: 'photosGridGallery',  section: 'gallery'  },
+  ]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    Array.from(el.children).forEach((card, position) => {
+      order.push({ id: card.dataset.id, section, position });
+    });
+  }
+  const r = await fetch('/api/admin/photos/reorder', {
+    method: 'PATCH', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ order }),
+  });
+  if (!r.ok) { showToast(`Erreur ${r.status}`); return; }
+  document.getElementById('previewFrame').contentWindow.location.reload();
 }
 async function renderGiftsTab() {
   const tab = $('#tab-gifts');
