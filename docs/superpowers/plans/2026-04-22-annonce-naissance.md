@@ -446,9 +446,9 @@ MINIO_SECRET_KEY=x
 PUBLIC_ORIGIN=http://localhost:3000
 ```
 
-Add `dotenv/config` to the dev run. Update the `dev` script in `package.json`:
+Update the `dev` script in `package.json` to use Node's native `--env-file` flag. The `watch` sub-command must come before flags in tsx, otherwise tsx treats `watch` as a filename:
 ```json
-"dev": "tsx --env-file=.env watch src/index.ts",
+"dev": "tsx watch --env-file=.env src/index.ts",
 "test": "vitest run",
 ```
 
@@ -4148,13 +4148,13 @@ git commit -am "feat(infra): complete docker-compose with caddy/api/postgres/bac
 
 ```
 {
-  email {env.CADDY_EMAIL}
+  email {$CADDY_EMAIL}
   servers {
     trusted_proxies static private_ranges
   }
 }
 
-{env.PUBLIC_HOSTNAME} {
+{$PUBLIC_HOSTNAME} {
   encode zstd gzip
 
   header {

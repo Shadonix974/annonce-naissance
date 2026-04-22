@@ -1,0 +1,17 @@
+{
+  "name": "annonce-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "install-browsers": "playwright install --with-deps chromium",
+    "lighthouse": "node lighthouse.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.11.2",
+    "@playwright/test": "^1.59.1",
+    "chrome-launcher": "^1.2.1",
+    "lighthouse": "^13.1.0"
+  }
+}

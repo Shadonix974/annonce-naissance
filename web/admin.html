@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Admin · Faire-part</title>
+  <link rel="stylesheet" href="/admin.css">
+</head>
+<body>
+  <div id="loginPanel" class="login">
+    <form id="loginForm">
+      <h1>Administration</h1>
+      <label>Mot de passe <input type="password" name="password" required autocomplete="current-password"></label>
+      <button type="submit">Entrer</button>
+      <p id="loginError" class="error" hidden></p>
+    </form>
+  </div>
+
+  <div id="adminPanel" class="panel" hidden>
+    <aside class="sidebar">
+      <h1>Admin</h1>
+      <nav>
+        <button data-tab="tweaks" class="active">Textes</button>
+        <button data-tab="photos">Photos</button>
+        <button data-tab="gifts">Cadeaux</button>
+        <button data-tab="timeline">Chronologie</button>
+        <button data-tab="link">Lien privé</button>
+        <button data-tab="security">Sécurité</button>
+      </nav>
+      <button id="logoutBtn">Déconnexion</button>
+    </aside>
+    <main class="editor">
+      <section id="tab-tweaks" class="tab"></section>
+      <section id="tab-photos" class="tab" hidden></section>
+      <section id="tab-gifts" class="tab" hidden></section>
+      <section id="tab-timeline" class="tab" hidden></section>
+      <section id="tab-link" class="tab" hidden></section>
+      <section id="tab-security" class="tab" hidden></section>
+    </main>
+    <aside class="preview">
+      <iframe id="previewFrame" title="Aperçu"></iframe>
+    </aside>
+  </div>
+
+  <script type="module" src="/admin.js"></script>
+</body>
+</html>

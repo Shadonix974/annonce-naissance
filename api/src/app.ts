@@ -1,0 +1,28 @@
+import { Hono } from "hono";
+import { requestLogger } from "./lib/logger.js";
+import { onError } from "./middleware/error-handler.js";
+import adminAccessToken from "./routes/admin/access-token.js";
+import adminGifts from "./routes/admin/gifts.js";
+import adminLogin from "./routes/admin/login.js";
+import adminPhotos from "./routes/admin/photos.js";
+import adminTimeline from "./routes/admin/timeline.js";
+import adminTweaks from "./routes/admin/tweaks.js";
+import giftsRoute from "./routes/gifts.js";
+import photosRoute from "./routes/photos.js";
+import stateRoute from "./routes/state.js";
+import streamRoute from "./routes/stream.js";
+
+export const app = new Hono();
+app.use("*", requestLogger);
+app.onError(onError);
+app.get("/healthz", (c) => c.json({ ok: true }));
+app.route("/api/admin", adminLogin);
+app.route("/api/admin/tweaks", adminTweaks);
+app.route("/api/admin/gifts", adminGifts);
+app.route("/api/admin/photos", adminPhotos);
+app.route("/api/admin/timeline", adminTimeline);
+app.route("/api/admin/access-token", adminAccessToken);
+app.route("/api/state", stateRoute);
+app.route("/api/gifts", giftsRoute);
+app.route("/api/stream", streamRoute);
+app.route("/photos", photosRoute);

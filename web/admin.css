@@ -1,0 +1,40 @@
+:root {
+  --bg: #0f1324;
+  --panel: #171c32;
+  --ink: #e7e2d6;
+  --muted: #9a95a5;
+  --accent: #c9a66b;
+  --border: #272e4d;
+  --err: #e07a6a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: system-ui, sans-serif; }
+.login { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.login form { background: var(--panel); padding: 32px; border-radius: 8px; width: 340px; }
+.login h1 { margin: 0 0 16px; font-weight: 400; }
+label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+input, textarea, select {
+  width: 100%; background: transparent; color: var(--ink); border: 1px solid var(--border);
+  padding: 8px 10px; border-radius: 4px; font: inherit; margin-top: 4px;
+}
+button { cursor: pointer; background: var(--accent); color: #1a1a1a; border: 0; padding: 10px 16px; border-radius: 4px; font: inherit; }
+button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--border); }
+button.danger   { background: var(--err); color: white; }
+.error { color: var(--err); font-size: 13px; margin-top: 8px; }
+
+.panel { display: grid; grid-template-columns: 220px 1fr 1fr; min-height: 100vh; }
+.sidebar { background: var(--panel); padding: 24px 16px; display: flex; flex-direction: column; gap: 8px; border-right: 1px solid var(--border); }
+.sidebar nav { display: flex; flex-direction: column; gap: 4px; flex: 1; margin-top: 12px; }
+.sidebar nav button { background: transparent; color: var(--ink); text-align: left; padding: 8px 12px; border-radius: 4px; }
+.sidebar nav button.active { background: var(--border); }
+.editor { padding: 24px; overflow-y: auto; max-height: 100vh; }
+.preview { border-left: 1px solid var(--border); }
+.preview iframe { width: 100%; height: 100vh; border: 0; }
+
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.section-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .2em; margin: 24px 0 8px; }
+.item { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 12px; margin-bottom: 8px; }
+.swatches { display: flex; gap: 8px; margin-top: 8px; }
+.swatch { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+.swatch.active { border-color: white; }
+.swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 2px; }

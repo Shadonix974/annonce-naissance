@@ -8,6 +8,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Italianno&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#1a2340">
+  <meta property="og:title" content="Faire-part de naissance">
+  <meta property="og:description" content="Un petit être né ce printemps.">
+  <meta property="og:image" content="/og.png">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 </head>
 <body>
   <div class="stars" aria-hidden="true"></div>
@@ -25,7 +35,7 @@
   <main class="rail" id="rail" role="main">
 
     <!-- 01 — HERO -->
-    <section class="scene scene-hero" data-screen-label="01 Annonce">
+    <section class="scene scene-hero" role="region" aria-label="Annonce" data-screen-label="01 Annonce">
       <div class="scene-badge reveal r-1">01 · Annonce</div>
 
       <div class="script-hello script reveal r-1">Nous vous présentons</div>
@@ -50,7 +60,7 @@
     </section>
 
     <!-- 02 — DETAILS -->
-    <section class="scene scene-stats" data-screen-label="02 Détails">
+    <section class="scene scene-stats" role="region" aria-label="Détails" data-screen-label="02 Détails">
       <div class="scene-badge reveal r-1">02 · Détails</div>
       <div class="stats-wrap">
         <div class="stats-lead">
@@ -85,21 +95,17 @@
     </section>
 
     <!-- 03 — PHOTOS triptyque -->
-    <section class="scene scene-photos" data-screen-label="03 Photos">
+    <section class="scene scene-photos" role="region" aria-label="Photos" data-screen-label="03 Photos">
       <div class="scene-badge reveal r-1">03 · Premiers instants</div>
       <div class="header reveal r-1">
         <div class="overline">Premiers jours</div>
         <div class="script-h script" style="margin-top:6px;">Ses premiers instants</div>
       </div>
-      <div class="triptych">
-        <div class="ph reveal r-2" data-label="photo · main du bébé"></div>
-        <div class="ph reveal r-3" data-label="photo · portrait"></div>
-        <div class="ph reveal r-4" data-label="photo · avec maman"></div>
-      </div>
+      <div class="triptych" id="triptychGrid"></div>
     </section>
 
     <!-- 04 — MOT DES PARENTS -->
-    <section class="scene scene-words" data-screen-label="04 Mot des parents">
+    <section class="scene scene-words" role="region" aria-label="Mot des parents" data-screen-label="04 Mot des parents">
       <div class="scene-badge reveal r-1">04 · Mot des parents</div>
       <div class="words-wrap">
         <div class="mark reveal r-1">“</div>
@@ -115,7 +121,7 @@
     </section>
 
     <!-- 05 — FAMILLE / ARBRE -->
-    <section class="scene scene-family" data-screen-label="05 Famille">
+    <section class="scene scene-family" role="region" aria-label="Famille" data-screen-label="05 Famille">
       <div class="scene-badge reveal r-1">05 · Famille</div>
       <div class="family-wrap">
         <div class="overline reveal r-1">Les siens</div>
@@ -158,84 +164,30 @@
     </section>
 
     <!-- 06 — CHRONOLOGIE -->
-    <section class="scene scene-timeline" data-screen-label="06 Chronologie">
+    <section class="scene scene-timeline" role="region" aria-label="Chronologie" data-screen-label="06 Chronologie">
       <div class="scene-badge reveal r-1">06 · Chronologie</div>
       <div class="timeline-wrap">
         <div class="overline reveal r-1">Le chemin parcouru</div>
         <h2 class="title display reveal r-2">De l'attente</h2>
         <div class="script-h reveal r-3">à l'émerveillement</div>
 
-        <div class="timeline">
-          <div class="tick reveal r-4">
-            <div class="date">Août 2025</div>
-            <div class="label">Le test positif — l'incroyable nouvelle partagée à deux.</div>
-          </div>
-          <div class="tick reveal r-4">
-            <div class="date">Oct 2025</div>
-            <div class="label">Première échographie. Un petit cœur, déjà fort.</div>
-          </div>
-          <div class="tick reveal r-5">
-            <div class="date">Janv 2026</div>
-            <div class="label">On apprend que c'est un garçon. Le prénom s'impose.</div>
-          </div>
-          <div class="tick reveal r-5">
-            <div class="date">Mars 2026</div>
-            <div class="label">La chambre est prête. Les valises aussi. On attend.</div>
-          </div>
-          <div class="tick now reveal r-6">
-            <div class="date">14 avril 2026</div>
-            <div class="label">Léonard ouvre les yeux. Notre vie commence à trois.</div>
-          </div>
-        </div>
+        <div class="timeline" id="timelineList"></div>
       </div>
     </section>
 
     <!-- 07 — GALERIE -->
-    <section class="scene scene-gallery" data-screen-label="07 Galerie">
+    <section class="scene scene-gallery" role="region" aria-label="Galerie" data-screen-label="07 Galerie">
       <div class="scene-badge reveal r-1">07 · Galerie</div>
       <div class="header reveal r-1">
         <div class="overline">Album</div>
         <div class="script-h script" style="margin-top:6px;">Quelques souvenirs</div>
       </div>
-      <div class="gallery">
-        <div class="ph reveal r-2" data-label="photo · portrait 01"></div>
-        <div class="ph reveal r-3" data-label="photo · détail main"></div>
-        <div class="ph reveal r-3" data-label="photo · famille"></div>
-        <div class="ph reveal r-4" data-label="photo · sommeil"></div>
-        <div class="ph reveal r-4" data-label="photo · premier sourire"></div>
-      </div>
+      <div class="gallery" id="galleryGrid"></div>
     </section>
 
-    <!-- 08 — LIVRE D'OR -->
-    <section class="scene scene-guestbook" data-screen-label="08 Livre d'or">
-      <div class="scene-badge reveal r-1">08 · Livre d'or</div>
-      <div class="guest-wrap">
-        <div class="guest-left">
-          <div class="overline reveal r-1">Laissez un mot</div>
-          <div class="script-h script reveal r-2">Quelques mots</div>
-          <h2 class="title display reveal r-3">pour Léonard</h2>
-          <p class="body reveal r-4">
-            Vos messages seront relus dans quelques années,
-            quand il sera assez grand pour les comprendre.
-          </p>
-          <form class="guest-form reveal r-5" id="guestForm">
-            <div class="row">
-              <input type="text" name="name" placeholder="Votre prénom" required />
-              <input type="text" name="from" placeholder="Depuis… (ville, lien)" />
-            </div>
-            <textarea name="body" placeholder="Votre message pour lui…" required></textarea>
-            <button type="submit" class="send-btn">Déposer le mot</button>
-          </form>
-        </div>
-        <div class="guest-right reveal r-4">
-          <div id="msgList"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 09 — LISTE DE NAISSANCE -->
-    <section class="scene scene-registry" data-screen-label="09 Liste de naissance">
-      <div class="scene-badge reveal r-1">09 · Liste de naissance</div>
+    <!-- 08 — LISTE DE NAISSANCE -->
+    <section class="scene scene-registry" role="region" aria-label="Liste de naissance" data-screen-label="08 Liste de naissance">
+      <div class="scene-badge reveal r-1">08 · Liste de naissance</div>
       <div class="reg-wrap">
         <div class="reg-head">
           <div class="overline reveal r-1">Si le cœur vous en dit</div>
@@ -249,9 +201,9 @@
       </div>
     </section>
 
-    <!-- 10 — INFOS PRATIQUES -->
-    <section class="scene scene-info" data-screen-label="10 Infos pratiques">
-      <div class="scene-badge reveal r-1">10 · Infos pratiques</div>
+    <!-- 09 — INFOS PRATIQUES -->
+    <section class="scene scene-info" role="region" aria-label="Infos pratiques" data-screen-label="09 Infos pratiques">
+      <div class="scene-badge reveal r-1">09 · Infos pratiques</div>
       <div class="info-wrap">
         <div class="info-head">
           <div class="overline reveal r-1">Venir le rencontrer</div>
@@ -283,9 +235,9 @@
       </div>
     </section>
 
-    <!-- 11 — MERCI -->
-    <section class="scene scene-end" data-screen-label="11 Merci">
-      <div class="scene-badge reveal r-1">11 · Avec tendresse</div>
+    <!-- 10 — MERCI -->
+    <section class="scene scene-end" role="region" aria-label="Merci" data-screen-label="10 Merci">
+      <div class="scene-badge reveal r-1">10 · Avec tendresse</div>
       <div class="overline reveal r-1">Avec toute notre tendresse</div>
       <div class="script-h script reveal r-2">Merci</div>
       <div class="sig reveal r-3">
@@ -307,12 +259,11 @@
       <div class="seg" title="Famille"></div>
       <div class="seg" title="Chronologie"></div>
       <div class="seg" title="Galerie"></div>
-      <div class="seg" title="Livre d'or"></div>
       <div class="seg" title="Liste de naissance"></div>
       <div class="seg" title="Infos pratiques"></div>
       <div class="seg" title="Merci"></div>
     </div>
-    <div class="scene-count" id="sceneCount">01 / 11</div>
+    <div class="scene-count" id="sceneCount">01 / 10</div>
     <div class="nav-btns">
       <button class="nav-btn" id="prevBtn" aria-label="Précédent">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 6l-6 6 6 6"/></svg>
@@ -323,9 +274,23 @@
     </div>
   </nav>
 
-  <!-- Tweaks panel -->
-  <aside class="tweaks" id="tweaks"></aside>
-
+  <dialog id="giftModal" class="gift-modal" aria-labelledby="giftModalTitle">
+  <form method="dialog" id="giftModalForm" novalidate>
+    <h3 id="giftModalTitle"></h3>
+    <p class="gift-modal-range" id="giftModalRange"></p>
+    <label>Qui êtes-vous ?
+      <input type="text" name="name" required minlength="1" maxlength="80" autocomplete="name">
+    </label>
+    <label>Un petit mot (optionnel) ?
+      <textarea name="note" maxlength="500" rows="3"></textarea>
+    </label>
+    <div class="gift-modal-actions">
+      <button value="cancel">Annuler</button>
+      <button value="confirm" class="primary">Je le prends</button>
+    </div>
+    <p class="gift-modal-error" id="giftModalError" hidden></p>
+  </form>
+</dialog>
   <script src="app.js"></script>
 </body>
 </html>
