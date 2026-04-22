@@ -366,7 +366,9 @@ async function init() {
   Object.assign(state, data);
 
   // Set _k cookie so <img src="/photos/..."> requests carry the token.
-  document.cookie = `_k=${encodeURIComponent(token)}; Path=/; SameSite=Strict; Max-Age=31536000`;
+  // Add Secure when served over HTTPS; keep it off in local http dev.
+  const secureFlag = location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `_k=${encodeURIComponent(token)}; Path=/; SameSite=Strict; Max-Age=31536000${secureFlag}`;
 
   state.rail = $('#rail');
   state.scenes = $$('.scene');
