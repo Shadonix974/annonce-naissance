@@ -81,6 +81,7 @@ function renderGifts() {
     const el = document.createElement('div');
     el.className = 'gift' + (g.takenBy ? ' taken' : '');
     el.dataset.id = g.id;
+    const mineFlag = state.reservedGiftIds.has(g.id) ? ' (réservé par vous)' : '';
     el.innerHTML = `
       <div class="ph"></div>
       <div class="g-name"></div>
@@ -91,10 +92,78 @@ function renderGifts() {
     `;
     el.querySelector('.g-name').textContent = g.name;
     el.querySelector('.g-range').textContent = g.rangeText;
-    el.querySelector('.g-status').textContent = g.takenBy ? `✓ Pris par ${g.takenBy}` : '○ Disponible';
-    // Click handler with modal is added in Task 30.
+    el.querySelector('.g-status').textContent = g.takenBy
+      ? `✓ Pris par ${g.takenBy}${mineFlag}`
+      : '○ Disponible';
+    el.addEventListener('click', () => openGiftModal(g));
     grid.appendChild(el);
   }
+}
+
+function openGiftModal(gift) {
+  const dlg = document.getElementById('giftModal');
+  const form = dlg.querySelector('form');
+  document.getElementById('giftModalTitle').textContent = gift.name;
+  document.getElementById('giftModalRange').textContent = gift.rangeText;
+  form.name.value = '';
+  form.note.value = '';
+  const err = document.getElementById('giftModalError');
+  err.hidden = true;
+  err.textContent = '';
+
+  const mine = state.reservedGiftIds.has(gift.id);
+  const alreadyTaken = !!gift.takenBy;
+  const confirmBtn = form.querySelector('button[value=confirm]');
+
+  if (alreadyTaken && !mine) {
+    err.hidden = false;
+    err.textContent = `Déjà réservé par ${gift.takenBy}. Les parents peuvent annuler si besoin.`;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Je le prends';
+  } else if (mine) {
+    confirmBtn.textContent = 'Annuler ma réservation';
+    confirmBtn.disabled = false;
+  } else {
+    confirmBtn.textContent = 'Je le prends';
+    confirmBtn.disabled = false;
+  }
+
+  const handler = async (e) => {
+    const btn = e.submitter;
+    if (!btn || btn.value !== 'confirm') return;
+    e.preventDefault();
+    const token = localStorage.getItem('accessToken');
+    try {
+      if (mine) {
+        const r = await fetch(`/api/gifts/${gift.id}/unreserve`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'X-Access-Token': token },
+          body: JSON.stringify({ name: gift.takenBy }),
+        });
+        if (!r.ok) throw new Error();
+        state.reservedGiftIds.delete(gift.id);
+      } else {
+        const name = form.name.value.trim();
+        if (!name) { err.hidden = false; err.textContent = 'Prénom requis.'; return; }
+        const r = await fetch(`/api/gifts/${gift.id}/reserve`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'X-Access-Token': token },
+          body: JSON.stringify({ name, note: form.note.value || undefined }),
+        });
+        if (r.status === 409) { err.hidden = false; err.textContent = 'Déjà réservé.'; return; }
+        if (!r.ok) throw new Error();
+        state.reservedGiftIds.add(gift.id);
+      }
+      localStorage.setItem('reservedGiftIds', JSON.stringify([...state.reservedGiftIds]));
+      dlg.close();
+    } catch {
+      err.hidden = false;
+      err.textContent = 'Une erreur est survenue. Réessayez.';
+    }
+  };
+
+  form.addEventListener('submit', handler, { once: true });
+  dlg.showModal();
 }
 
 /* ---------- Ambient music (Web Audio, subtle) ---------- */

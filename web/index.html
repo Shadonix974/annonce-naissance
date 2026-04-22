@@ -274,6 +274,23 @@
     </div>
   </nav>
 
+  <dialog id="giftModal" class="gift-modal" aria-labelledby="giftModalTitle">
+  <form method="dialog" id="giftModalForm" novalidate>
+    <h3 id="giftModalTitle"></h3>
+    <p class="gift-modal-range" id="giftModalRange"></p>
+    <label>Qui êtes-vous ?
+      <input type="text" name="name" required minlength="1" maxlength="80" autocomplete="name">
+    </label>
+    <label>Un petit mot (optionnel) ?
+      <textarea name="note" maxlength="500" rows="3"></textarea>
+    </label>
+    <div class="gift-modal-actions">
+      <button value="cancel">Annuler</button>
+      <button value="confirm" class="primary">Je le prends</button>
+    </div>
+    <p class="gift-modal-error" id="giftModalError" hidden></p>
+  </form>
+</dialog>
   <script src="app.js"></script>
 </body>
 </html>
