@@ -8,7 +8,8 @@ import { z } from "zod";
 import { db, schema } from "../../db/client.js";
 import { NotFoundError, ValidationError } from "../../lib/errors.js";
 import { getReadStream, objectKey, originalKey, putBuffer, removePrefix } from "../../lib/minio.js";
-import { normaliseOriginal, processPhoto } from "../../lib/sharp-pipeline.js";
+import sharp from "sharp";
+import { generateVariants, normaliseOriginal, processPhoto } from "../../lib/sharp-pipeline.js";
 import { assertSameOrigin } from "../../lib/origin-check.js";
 import { requireAdmin } from "../../middleware/require-admin.js";
 
@@ -125,5 +126,65 @@ app.get("/:id/original", async (c) => {
     await s.pipe(webStream);
   });
 });
+
+app.patch(
+  "/:id/recrop",
+  zValidator("json", z.object({
+    x: z.number().int().min(0),
+    y: z.number().int().min(0),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+  })),
+  async (c) => {
+    assertSameOrigin(c);
+    const id = c.req.param("id");
+    const { x, y, width, height } = c.req.valid("json");
+
+    const [row] = await db.select().from(photos).where(eq(photos.id, id));
+    if (!row) throw new NotFoundError();
+
+    let originalBuf: Buffer;
+    try {
+      const s = await getReadStream(originalKey(id));
+      const chunks: Buffer[] = [];
+      for await (const ch of s) chunks.push(Buffer.from(ch));
+      originalBuf = Buffer.concat(chunks);
+    } catch {
+      throw new NotFoundError("original_missing");
+    }
+
+    // Bounds check — reject before heavy sharp work.
+    const srcMeta = await sharp(originalBuf).metadata();
+    if (!srcMeta.width || !srcMeta.height) throw new ValidationError("invalid_original");
+    if (x + width > srcMeta.width || y + height > srcMeta.height) {
+      throw new ValidationError("out_of_bounds");
+    }
+
+    // rotate() is a no-op here (original already EXIF-rotated on upload) but
+    // keeps the pipeline symmetrical and safe against future changes.
+    const base = sharp(originalBuf).rotate().extract({ left: x, top: y, width, height });
+    const processed = await generateVariants(base);
+
+    await Promise.all(
+      processed.variants.map((v) =>
+        putBuffer(objectKey(id, v.size, v.format), v.buffer, v.contentType),
+      ),
+    );
+
+    // Use the crop region dimensions directly: sharp's .metadata() on a chained
+    // pipeline returns the input (pre-extract) dimensions, not the output dims.
+    const [updated] = await db.update(photos)
+      .set({
+        width,
+        height,
+        blurhash: processed.blurhash ?? null,
+        version: row.version + 1,
+      })
+      .where(eq(photos.id, id))
+      .returning();
+
+    return c.json(updated);
+  },
+);
 
 export default app;

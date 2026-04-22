@@ -302,3 +302,95 @@ test("GET /api/admin/photos/:id/original returns 404 for unknown photo", async (
   }));
   expect(res.status).toBe(404);
 }, 30_000);
+
+test("PATCH /:id/recrop requires admin", async () => {
+  const app = await buildApp();
+  const res = await app.fetch(new Request("http://localhost:3000/api/admin/photos/00000000-0000-0000-0000-000000000000/recrop", {
+    method: "PATCH",
+    headers: { "content-type": "application/json", origin: "http://localhost:3000" },
+    body: JSON.stringify({ x: 0, y: 0, width: 100, height: 100 }),
+  }));
+  expect(res.status).toBe(401);
+}, 30_000);
+
+test("PATCH /:id/recrop rejects out-of-bounds region", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+  const fd = new FormData();
+  fd.append("file", new Blob([await makePng(300, 200)], { type: "image/png" }), "x.png");
+  fd.append("section", "gallery");
+  fd.append("alt", "oob");
+  const up = await app.fetch(uploadReq(cookie, fd));
+  const photo = await up.json() as { id: string };
+
+  const res = await app.fetch(new Request(`http://localhost:3000/api/admin/photos/${photo.id}/recrop`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", origin: "http://localhost:3000", cookie },
+    body: JSON.stringify({ x: 200, y: 0, width: 200, height: 100 }), // x+width > 300
+  }));
+  expect(res.status).toBe(400);
+  expect(await res.json()).toMatchObject({ error: "out_of_bounds" });
+}, 60_000);
+
+test("PATCH /:id/recrop rejects invalid numeric input", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+  const fd = new FormData();
+  fd.append("file", new Blob([await makePng(300, 200)], { type: "image/png" }), "x.png");
+  fd.append("section", "gallery");
+  fd.append("alt", "bad");
+  const up = await app.fetch(uploadReq(cookie, fd));
+  const photo = await up.json() as { id: string };
+
+  const res = await app.fetch(new Request(`http://localhost:3000/api/admin/photos/${photo.id}/recrop`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", origin: "http://localhost:3000", cookie },
+    body: JSON.stringify({ x: -1, y: 0, width: 10, height: 10 }),
+  }));
+  expect(res.status).toBe(400);
+}, 60_000);
+
+test("PATCH /:id/recrop happy path bumps version, updates dims + blurhash, rewrites variants", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+  const fd = new FormData();
+  fd.append("file", new Blob([await makePng(400, 300)], { type: "image/png" }), "x.png");
+  fd.append("section", "gallery");
+  fd.append("alt", "recrop");
+  const up = await app.fetch(uploadReq(cookie, fd));
+  const before = await up.json() as { id: string; version: number; width: number; height: number; blurhash: string };
+  expect(before.version).toBe(1);
+
+  const res = await app.fetch(new Request(`http://localhost:3000/api/admin/photos/${before.id}/recrop`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", origin: "http://localhost:3000", cookie },
+    body: JSON.stringify({ x: 50, y: 50, width: 200, height: 150 }),
+  }));
+  expect(res.status).toBe(200);
+  const after = await res.json() as { id: string; version: number; width: number; height: number; blurhash: string };
+  expect(after.id).toBe(before.id);
+  expect(after.version).toBe(2);
+  expect(after.width).toBe(200);
+  expect(after.height).toBe(150);
+
+  // Variants reflect the new dimensions: the full.jpg width must now be <= 200 (no upscale).
+  const token = (await getAccessToken())!;
+  const full = await app.fetch(new Request(`http://x/photos/${before.id}/full.jpg`, {
+    headers: { "x-access-token": token },
+  }));
+  expect(full.status).toBe(200);
+  const fullMeta = await sharp(Buffer.from(await full.arrayBuffer())).metadata();
+  expect(fullMeta.width).toBe(200);
+  expect(fullMeta.height).toBe(150);
+}, 60_000);
+
+test("PATCH /:id/recrop returns 404 for unknown photo", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+  const res = await app.fetch(new Request("http://localhost:3000/api/admin/photos/00000000-0000-0000-0000-000000000000/recrop", {
+    method: "PATCH",
+    headers: { "content-type": "application/json", origin: "http://localhost:3000", cookie },
+    body: JSON.stringify({ x: 0, y: 0, width: 10, height: 10 }),
+  }));
+  expect(res.status).toBe(404);
+}, 30_000);
