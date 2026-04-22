@@ -8,6 +8,7 @@ import { gifts, settings, timelineEvents, tweaks } from "./schema.js";
 const log = pino({ level: env.LOG_LEVEL });
 
 const TWEAKS_SEED: Record<string, string> = {
+  // Bébé
   babyName: "Léonard",
   babyMiddle: "Augustin",
   dateLong: "14 avril 2026",
@@ -16,11 +17,26 @@ const TWEAKS_SEED: Record<string, string> = {
   weight: "3,42",
   height: "51",
   city: "Paris",
-  maternity: "Maternité des Lilas",
+  // Famille
   father: "Julien",
   mother: "Camille",
   paternalGP: "Pierre & Hélène",
   maternalGP: "Antoine & Marie",
+  // Mot des parents (scène 04) — multi-ligne autorisé
+  parentsNote:
+    "Nous t'attendions depuis si longtemps, et tu es arrivé au petit matin, doucement, comme tu sembles vouloir traverser la vie. Nos cœurs n'ont jamais été aussi pleins. Bienvenue, mon amour. Le monde a de la chance de t'accueillir.",
+  // Maternité + adresse (scènes 02 et 09)
+  maternity: "Maternité des Lilas",
+  addressLine: "14 rue du Coq-Français, 93260 Les Lilas",
+  roomNumber: "Chambre 214, 3ᵉ étage",
+  // Infos pratiques (scène 09)
+  visitHours: "14h — 19h, tous les jours",
+  visitNote: "Merci de nous prévenir par message un peu avant de venir.",
+  returnDate: "Samedi 18 avril",
+  returnNote: "À partir de là, les visites se font sur rendez-vous, le temps de trouver nos marques.",
+  phone: "06 12 34 56 78",
+  phoneNote: "Camille & Julien — sms de préférence, les journées sont encore brouillons.",
+  // Accent (couleur)
   accent: "gold",
 };
 
@@ -50,12 +66,14 @@ export async function runSeeds(): Promise<void> {
       log.info({ token }, "🔑 Access token généré — régénérable depuis /admin");
     }
 
-    const tweaksCount = await tx.execute(sql`SELECT count(*)::int AS c FROM tweaks`);
-    if (Number((tweaksCount.rows[0] as { c: number } | undefined)?.c ?? 0) === 0) {
-      await tx
-        .insert(tweaks)
-        .values(Object.entries(TWEAKS_SEED).map(([key, value]) => ({ key, value })));
-    }
+    // Tweaks: add any key that's missing (idempotent). We never overwrite an
+    // existing value — admins can edit them via /admin and those edits persist
+    // across API restarts. Old deployments that already seeded the original 14
+    // keys will only gain the newer ones (parentsNote, addressLine, …).
+    await tx
+      .insert(tweaks)
+      .values(Object.entries(TWEAKS_SEED).map(([key, value]) => ({ key, value })))
+      .onConflictDoNothing({ target: tweaks.key });
 
     const giftsCount = await tx.execute(sql`SELECT count(*)::int AS c FROM gifts`);
     if (Number((giftsCount.rows[0] as { c: number } | undefined)?.c ?? 0) === 0) {
