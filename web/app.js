@@ -360,7 +360,7 @@ async function bootstrapMasonry(grid) {
     _masonryReady = Promise.all([
       _loadVendorScript('/vendor/imagesloaded.pkgd.min.js'),
       _loadVendorScript('/vendor/masonry.pkgd.min.js'),
-    ]);
+    ]).catch((err) => { _masonryReady = null; throw err; });
   }
   await _masonryReady;
   window.imagesLoaded(grid, () => {
