@@ -4148,13 +4148,13 @@ git commit -am "feat(infra): complete docker-compose with caddy/api/postgres/bac
 
 ```
 {
-  email {env.CADDY_EMAIL}
+  email {$CADDY_EMAIL}
   servers {
     trusted_proxies static private_ranges
   }
 }
 
-{env.PUBLIC_HOSTNAME} {
+{$PUBLIC_HOSTNAME} {
   encode zstd gzip
 
   header {
