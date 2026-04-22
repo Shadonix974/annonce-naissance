@@ -264,6 +264,7 @@ function openDeleteModal() {
 }
 
 const TWEAK_LABELS = {
+  // Bébé
   babyName: "Prénom",
   babyMiddle: "Second prénom",
   dateLong: "Date (long)",
@@ -272,12 +273,35 @@ const TWEAK_LABELS = {
   weight: "Poids (kg)",
   height: "Taille (cm)",
   city: "Ville",
-  maternity: "Maternité",
+  // Famille
   father: "Père",
   mother: "Mère",
   paternalGP: "Grands-parents paternels",
   maternalGP: "Grands-parents maternels",
+  // Mot des parents
+  parentsNote: "Mot des parents",
+  // Maternité
+  maternity: "Maternité",
+  addressLine: "Adresse",
+  roomNumber: "Chambre / étage",
+  // Infos pratiques
+  visitHours: "Horaires de visite",
+  visitNote: "Note sur les visites",
+  returnDate: "Retour à la maison",
+  returnNote: "Note sur le retour",
+  phone: "Téléphone",
+  phoneNote: "Note sur le téléphone",
 };
+// Section headers rendered above each group.
+const TWEAK_SECTIONS = [
+  { title: "Bébé",              keys: ["babyName", "babyMiddle", "dateLong", "dateShort", "timeBirth", "weight", "height", "city"] },
+  { title: "Famille",           keys: ["father", "mother", "paternalGP", "maternalGP"] },
+  { title: "Mot des parents",   keys: ["parentsNote"] },
+  { title: "Maternité",         keys: ["maternity", "addressLine", "roomNumber"] },
+  { title: "Infos pratiques",   keys: ["visitHours", "visitNote", "returnDate", "returnNote", "phone", "phoneNote"] },
+];
+// Keys that render as <textarea> (multi-line prose, optional line breaks).
+const TWEAK_MULTILINE = new Set(["parentsNote", "visitNote", "returnNote", "phoneNote"]);
 const ACCENT_COLORS = { gold: "#c9a66b", sage: "#8cae95", rose: "#d79898", azure: "#8fb0d9" };
 
 async function loadState() {
@@ -375,14 +399,26 @@ async function renderTweaksTab() {
   tab.innerHTML = '';
   const data = await loadState();
 
-  for (const [key, label] of Object.entries(TWEAK_LABELS)) {
-    const group = document.createElement('label');
-    const input = document.createElement('input');
-    input.dataset.key = key;
-    input.value = data.tweaks[key] ?? '';
-    group.textContent = label + ' ';
-    group.appendChild(input);
-    tab.appendChild(group);
+  for (const section of TWEAK_SECTIONS) {
+    const h = document.createElement('div');
+    h.className = 'section-title';
+    h.textContent = section.title;
+    tab.appendChild(h);
+
+    for (const key of section.keys) {
+      const label = TWEAK_LABELS[key];
+      if (!label) continue;
+      const group = document.createElement('label');
+      const field = TWEAK_MULTILINE.has(key)
+        ? document.createElement('textarea')
+        : document.createElement('input');
+      field.dataset.key = key;
+      field.value = data.tweaks[key] ?? '';
+      if (field.tagName === 'TEXTAREA') field.rows = key === 'parentsNote' ? 5 : 2;
+      group.textContent = label + ' ';
+      group.appendChild(field);
+      tab.appendChild(group);
+    }
   }
 
   // Accent swatches
