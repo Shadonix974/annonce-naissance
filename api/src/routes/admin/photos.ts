@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
+import { zValidator } from "../../lib/validate.js";
 import { z } from "zod";
 import { db, schema } from "../../db/client.js";
 import { NotFoundError, ValidationError } from "../../lib/errors.js";

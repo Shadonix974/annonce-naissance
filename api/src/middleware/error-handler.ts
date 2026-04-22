@@ -1,9 +1,6 @@
 import type { Context } from "hono";
-import pino from "pino";
-import { env } from "../env.js";
 import { HttpError } from "../lib/errors.js";
-
-const log = pino({ level: env.LOG_LEVEL });
+import { log } from "../lib/logger.js";
 
 export function onError(err: Error, c: Context): Response {
   if (err instanceof HttpError) {

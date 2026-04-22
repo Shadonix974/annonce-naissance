@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
+import { zValidator } from "../../lib/validate.js";
 import { z } from "zod";
 import { createSession, destroyAllSessions, destroySession, verifyAdminPassword } from "../../lib/auth.js";
 import { assertSameOrigin } from "../../lib/origin-check.js";
