@@ -111,3 +111,50 @@ test("print endpoints reject the main access token (token separation)", async ()
   const res = await app.fetch(new Request(`http://localhost:3000/api/print/state?k=${mainToken}`));
   expect(res.status).toBe(404);
 });
+
+test("GET /api/admin/print/link requires admin", async () => {
+  const app = await buildApp();
+  const res = await app.fetch(new Request("http://localhost:3000/api/admin/print/link"));
+  expect(res.status).toBe(401);
+}, 30_000);
+
+test("GET /api/admin/print/link returns the current print token + link", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+  const res = await app.fetch(new Request("http://localhost:3000/api/admin/print/link", { headers: { cookie } }));
+  expect(res.status).toBe(200);
+  const body = await res.json() as { token: string; link: string };
+  expect(body.token).toMatch(/^[A-Za-z0-9_-]{20,}$/);
+  expect(body.link).toContain("/print?k=");
+}, 30_000);
+
+test("POST /api/admin/print/rotate rotates the print token and returns the new link", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+  const before = await getPrintAccessToken();
+  const res = await app.fetch(new Request("http://localhost:3000/api/admin/print/rotate", {
+    method: "POST",
+    headers: { cookie, origin: "http://localhost:3000" },
+  }));
+  expect(res.status).toBe(200);
+  const body = await res.json() as { token: string; link: string };
+  expect(body.token).not.toBe(before);
+  // The old token must no longer unlock the print endpoints.
+  const stale = await app.fetch(new Request(`http://localhost:3000/api/print/state?k=${before}`));
+  expect(stale.status).toBe(404);
+}, 30_000);
+
+test("rotating the print token does NOT invalidate the main access token", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+  const { getAccessToken } = await import("../src/lib/access-token.js");
+  const mainBefore = await getAccessToken();
+
+  await app.fetch(new Request("http://localhost:3000/api/admin/print/rotate", {
+    method: "POST",
+    headers: { cookie, origin: "http://localhost:3000" },
+  }));
+
+  const mainAfter = await getAccessToken();
+  expect(mainAfter).toBe(mainBefore);
+}, 30_000);
