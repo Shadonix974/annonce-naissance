@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Faire-part de naissance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Italianno&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/print.css">
+</head>
+<body>
+  <main class="sheet" id="sheet">
+    <div class="cover-frame">
+      <img class="cover-photo" id="coverPhoto" alt="" data-hidden>
+      <div class="cover-fallback" id="coverFallback">Photo de faire-part</div>
+    </div>
+
+    <div class="credits">
+      <div class="overline">Nous vous présentons</div>
+      <h1 class="name">
+        <span data-t="babyName">Léonard</span>
+        <span class="middle" data-t="babyMiddle">Augustin</span>
+      </h1>
+
+      <div class="date-time">
+        <span data-t="dateLong">14 avril 2026</span>
+        <span class="sep">·</span>
+        <span data-t="timeBirth">04h27</span>
+      </div>
+
+      <div class="metrics">
+        <span><span data-t="weight">3,42</span>&nbsp;kg</span>
+        <span class="sep">·</span>
+        <span><span data-t="height">51</span>&nbsp;cm</span>
+      </div>
+
+      <div class="place">
+        né à <span data-t="city">Paris</span>, <span data-t="maternity">Maternité des Lilas</span>
+      </div>
+
+      <hr class="rule">
+
+      <div class="parents">
+        <span data-t="mother">Camille</span>
+        <span class="amp">&amp;</span>
+        <span data-t="father">Julien</span>
+      </div>
+    </div>
+  </main>
+
+  <aside class="no-print print-actions">
+    <button type="button" id="printBtn">Imprimer / Enregistrer en PDF</button>
+  </aside>
+
+  <script src="/print.js"></script>
+</body>
+</html>

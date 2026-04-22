@@ -1,0 +1,160 @@
+/* ============================================================
+   Print page — styled for both A4 (210×297mm) and Letter
+   (216×279mm). Relative sizing keeps both formats readable.
+   ============================================================ */
+
+:root {
+  --ink: #1a1a1a;
+  --cream: #fdfbf5;
+  --gold: #b08a4b;
+  --muted: #7a6f5e;
+  --serif: 'Cormorant Garamond', serif;
+  --script: 'Italianno', cursive;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-weight: 300;
+  min-height: 100vh;
+}
+
+.sheet {
+  max-width: 160mm;
+  margin: 20mm auto;
+  padding: 24mm 18mm;
+  background: var(--cream);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 18mm;
+  align-items: center;
+}
+
+.cover-frame {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  max-height: 150mm;
+  background: oklch(0.9 0.01 85);
+  border: 1px solid oklch(0.82 0.02 80);
+  overflow: hidden;
+  position: relative;
+}
+.cover-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.cover-photo[data-hidden] { display: none; }
+.cover-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--muted);
+  font-size: 16px;
+}
+.cover-photo:not([data-hidden]) + .cover-fallback { display: none; }
+
+.credits { width: 100%; }
+
+.overline {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14pt;
+  color: var(--muted);
+  margin-bottom: 6mm;
+}
+
+.name {
+  font-weight: 400;
+  font-size: 36pt;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  margin-bottom: 4mm;
+  display: flex;
+  flex-direction: column;
+  gap: 2mm;
+}
+.name .middle {
+  font-family: var(--script);
+  font-size: 42pt;
+  font-weight: 400;
+  color: var(--gold);
+  line-height: 0.9;
+}
+
+.date-time, .metrics, .place {
+  font-size: 13pt;
+  color: var(--ink);
+  margin-top: 3mm;
+  letter-spacing: 0.04em;
+}
+.date-time .sep, .metrics .sep { margin: 0 8px; color: var(--gold); }
+.place { font-style: italic; color: var(--muted); }
+
+.rule {
+  width: 40mm;
+  margin: 10mm auto;
+  border: 0;
+  border-top: 1px solid var(--gold);
+  opacity: 0.6;
+}
+
+.parents {
+  font-family: var(--script);
+  font-size: 40pt;
+  color: var(--gold);
+  line-height: 1.05;
+}
+.parents .amp { margin: 0 8px; }
+
+.print-actions {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
+}
+.print-actions button {
+  padding: 12px 20px;
+  background: var(--ink);
+  color: var(--cream);
+  border: 0;
+  font-family: var(--serif);
+  font-size: 14pt;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+/* ============================================================
+   Print styles — hide UI, fit one page, let the browser use the
+   paper size it's configured for (A4 or Letter; both work).
+   ============================================================ */
+@page {
+  margin: 0;
+}
+@media print {
+  html, body { background: #fff; }
+  .no-print { display: none !important; }
+  .sheet {
+    margin: 0 auto;
+    padding: 18mm 16mm;
+    max-width: none;
+    max-height: 100vh;
+  }
+  .cover-frame { max-height: 120mm; }
+}
+
+/* Narrow viewport fallback (admin previewing the page at small width) */
+@media (max-width: 600px) {
+  .sheet { padding: 16mm 10mm; gap: 12mm; }
+  .name { font-size: 30pt; }
+  .name .middle { font-size: 34pt; }
+  .parents { font-size: 32pt; }
+}
