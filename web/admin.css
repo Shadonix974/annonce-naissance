@@ -192,12 +192,51 @@ button.danger   { background: var(--err); color: white; }
    Mobile — crop modal fills the screen + safe area
    ============================================================ */
 @media (max-width: 640px) {
-  .panel { grid-template-columns: 1fr; }
-  .sidebar { flex-direction: row; flex-wrap: wrap; padding: 12px; }
+  .panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  /* Sidebar becomes a single horizontal scroll strip pinned to the top.
+     Tabs + logout live inline, no wrapping, touch-friendly inertial scroll. */
+  .sidebar {
+    flex-direction: row;
+    align-items: center;
+    padding: 8px 12px;
+    gap: 6px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    flex-shrink: 0;
+  }
   .sidebar h1 { display: none; }
-  .sidebar nav { flex-direction: row; flex-wrap: wrap; margin-top: 0; }
+  .sidebar nav {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 4px;
+    margin-top: 0;
+    flex: initial;
+  }
+  .sidebar nav button {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 8px 14px;
+  }
+  #logoutBtn {
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-left: 8px;
+    padding: 8px 14px;
+  }
   .preview { display: none; }
-  .editor { max-height: none; }
+  .editor {
+    max-height: none;
+    padding: 16px;
+    flex: 1;
+  }
 
   .crop-modal {
     width: 100vw;
