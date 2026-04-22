@@ -237,12 +237,59 @@ function stopMusic() {
   });
 }
 
-function toggleMusic() {
+function setMusicButtonState(on) {
   const btn = $('#musicBtn');
+  if (!btn) return;
+  btn.classList.toggle('playing', on);
+  const label = btn.querySelector('.label');
+  if (label) label.textContent = on ? 'Musique · on' : 'Musique · off';
+}
+
+function toggleMusic() {
   state.musicPlaying = !state.musicPlaying;
-  btn.classList.toggle('playing', state.musicPlaying);
-  btn.querySelector('.label').textContent = state.musicPlaying ? 'Musique · on' : 'Musique · off';
+  setMusicButtonState(state.musicPlaying);
+  // Persist across visits: once the user explicitly chose a state, future
+  // page loads honour it rather than overriding with autoplay.
+  localStorage.setItem('musicPreference', state.musicPlaying ? 'on' : 'off');
   if (state.musicPlaying) startMusic(); else stopMusic();
+}
+
+/* Autoplay is blocked on load by every major browser without a prior user
+   gesture. We try play() anyway (some contexts allow it via Media Engagement
+   Index) and, on rejection, hook a one-shot listener that starts the track
+   on the next click/tap/scroll/keydown — standard "feels like autoplay"
+   trick used on invitation/portfolio sites. */
+function attemptAutoplayMusic() {
+  // Don't autoplay inside the admin's preview iframe — annoying while editing.
+  if (window.self !== window.top) return;
+  // Respect explicit user choice from a previous session.
+  if (localStorage.getItem('musicPreference') === 'off') return;
+
+  const audio = document.getElementById('bgMusic');
+  if (!audio) return;
+
+  const begin = () => {
+    state.musicPlaying = true;
+    setMusicButtonState(true);
+    startMusic();
+  };
+
+  audio.volume = 0;
+  const p = audio.play();
+  if (p && typeof p.catch === 'function') {
+    p.then(() => fadeMusic(audio, 0, MUSIC_TARGET_VOLUME, 1500))
+      .then(() => setMusicButtonState(true))
+      .then(() => { state.musicPlaying = true; })
+      .catch(() => {
+        // Autoplay blocked — wait for the first genuine user gesture.
+        const events = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
+        const once = () => {
+          events.forEach((e) => document.removeEventListener(e, once));
+          begin();
+        };
+        events.forEach((e) => document.addEventListener(e, once, { passive: true }));
+      });
+  }
 }
 
 /* ---------- Token bootstrap ---------- */
@@ -480,6 +527,7 @@ async function init() {
   renderGifts();
   subscribeSSE(token);
   registerServiceWorker();
+  attemptAutoplayMusic();
 }
 
 document.addEventListener('DOMContentLoaded', init);
