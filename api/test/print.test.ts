@@ -158,3 +158,21 @@ test("rotating the print token does NOT invalidate the main access token", async
   const mainAfter = await getAccessToken();
   expect(mainAfter).toBe(mainBefore);
 }, 30_000);
+
+test("GET /api/admin/print/pdf requires admin", async () => {
+  const app = await buildApp();
+  const res = await app.fetch(new Request("http://localhost:3000/api/admin/print/pdf"));
+  expect(res.status).toBe(401);
+}, 30_000);
+
+test("GET /api/admin/print/pdf rejects unknown format", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+  const res = await app.fetch(new Request("http://localhost:3000/api/admin/print/pdf?format=a3", {
+    headers: { cookie },
+  }));
+  expect(res.status).toBe(400);
+}, 30_000);
+
+// Note: we do NOT spin up Playwright in unit tests. The 200-path for /pdf is
+// exercised manually during Task 14 (E2E verification).
