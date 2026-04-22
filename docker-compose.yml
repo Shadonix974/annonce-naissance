@@ -1,4 +1,81 @@
-# Completed in Phase 10 (Task 40+).
-# Intentionally empty skeleton so the repo layout is stable from the start.
 name: annonce-leonard
-services: {}
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./web:/srv/web:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [annonce-net]
+    depends_on: [api]
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://annonce:${DB_PASSWORD}@postgres:5432/annonce
+    networks: [annonce-net, minio-net]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:3000/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: annonce
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: annonce
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [annonce-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U annonce"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on: [postgres]
+    volumes:
+      - ./backups:/backups
+    environment:
+      PGPASSWORD: ${DB_PASSWORD}
+    networks: [annonce-net]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        while true; do
+          pg_dump -h postgres -U annonce -F c -f "/backups/annonce-$$(date +%Y%m%d-%H%M).dump" annonce
+          find /backups -name 'annonce-*.dump' -mtime +14 -delete
+          sleep 86400
+        done
+
+volumes:
+  caddy_data:
+  caddy_config:
+  postgres_data:
+
+networks:
+  annonce-net:
+    driver: bridge
+  minio-net:
+    external: true
+    name: ${MINIO_NETWORK:-minio_default}
