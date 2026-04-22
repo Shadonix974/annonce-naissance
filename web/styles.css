@@ -371,6 +371,10 @@ body {
   font-style: italic;
   text-wrap: balance;
 }
+/* Preserve user-entered line breaks when parentsNote comes from the admin
+   textarea; single-paragraph prose still renders fine (lone \n collapse to
+   a single space is the pre-line default). */
+.parents-note { white-space: pre-line; }
 .words-wrap .signed {
   margin-top: 36px;
   font-family: var(--script);
@@ -523,19 +527,30 @@ body {
   color: var(--gold-soft);
 }
 .gallery {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  gap: 16px;
+  display: block;
+  position: relative;
   width: 100%;
   max-width: 1280px;
-  height: 58vh;
+  margin: 0 auto;
 }
-.gallery .ph:nth-child(1) { grid-column: span 2; grid-row: span 2; }
-.gallery .ph:nth-child(2) { grid-column: span 2; }
-.gallery .ph:nth-child(3) { grid-column: span 2; }
-.gallery .ph:nth-child(4) { grid-column: span 2; }
-.gallery .ph:nth-child(5) { grid-column: span 2; }
+.gallery .ph {
+  width: calc(33.333% - 8px);
+  margin-bottom: 12px;
+  float: left; /* Masonry picks up the default block flow; float is a harmless hint for no-JS fallback. */
+  height: auto;
+}
+@media (max-width: 820px) {
+  .gallery .ph { width: calc(50% - 6px); }
+}
+@media (max-width: 520px) {
+  .gallery .ph { width: 100%; }
+}
+.gallery .ph > img,
+.gallery .ph > picture > img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
 
 /* ============================================================
    Scene 09 — Liste de naissance
@@ -829,8 +844,6 @@ body {
   .triptych { grid-template-columns: 1fr; height: auto; }
   .triptych .ph { height: 28vh; transform: none !important; }
   .reg-grid { grid-template-columns: 1fr; }
-  .gallery { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, 1fr); }
-  .gallery .ph:nth-child(n) { grid-column: span 1; grid-row: span 1; }
   .info-grid { grid-template-columns: 1fr; }
   .timeline { grid-template-columns: 1fr; }
   .timeline::before { display: none; }
@@ -863,11 +876,14 @@ body {
   width: min(440px, 90vw);
   border-radius: 4px;
   font-family: var(--serif);
+  /* The global `* { margin: 0 }` reset (line 25) kills the UA default
+     `dialog[open] { margin: auto }` that centers the dialog. Reinstate it. */
+  margin: auto;
 }
 .gift-modal::backdrop { background: rgba(10,12,20,.75); }
 .gift-modal h3 { font-weight: 300; font-size: 28px; }
-.gift-modal-range { color: var(--gold); font-size: 13px; letter-spacing: .2em; margin: 6px 0 18px; text-transform: uppercase; }
-.gift-modal label { display:block; font-size: 13px; opacity:.8; margin-top: 16px; }
+.gift-modal-range { color: var(--gold); font-size: 14px; letter-spacing: .2em; margin: 6px 0 18px; text-transform: uppercase; }
+.gift-modal label { display:block; font-size: 15px; opacity:.85; margin-top: 16px; }
 .gift-modal input, .gift-modal textarea {
   background: transparent;
   border: 0;
@@ -877,16 +893,30 @@ body {
   font-size: 17px;
   padding: 6px 2px;
   width: 100%;
+  /* Replace the browser's default focus rectangle (which bled over the label
+     text above) with a gold underline that matches the modal's accent. */
+  outline: none;
+  transition: border-bottom-color 120ms;
+}
+.gift-modal input:focus, .gift-modal textarea:focus {
+  border-bottom-color: var(--gold);
+}
+/* Kill the global keyboard focus-ring (styles.css:976-985) specifically
+   inside the gift modal — the outline-offset: 4px rectangle bled over
+   the label text above. The gold border-bottom above is our focus
+   indicator instead. Specificity (0,2,1) > the global (0,1,1). */
+.gift-modal input:focus-visible, .gift-modal textarea:focus-visible {
+  outline: none;
 }
 .gift-modal textarea { resize: vertical; }
 .gift-modal-actions { display:flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
 .gift-modal-actions button {
   background: transparent; color: var(--cream); border: 1px solid oklch(0.96 0.015 85 / 0.3);
-  padding: 10px 16px; font-family: var(--serif); font-size: 14px; cursor: pointer; border-radius: 2px;
+  padding: 10px 18px; font-family: var(--serif); font-size: 16px; cursor: pointer; border-radius: 2px;
 }
 .gift-modal-actions button.primary { background: var(--gold); color: var(--ink); border-color: var(--gold); }
 .gift-modal-actions button[disabled] { opacity:.4; cursor: not-allowed; }
-.gift-modal-error { color: oklch(0.76 0.1 25); font-style: italic; margin-top: 16px; font-size: 13px; }
+.gift-modal-error { color: oklch(0.76 0.1 25); font-style: italic; margin-top: 16px; font-size: 14px; }
 
 /* ============================================================
    Mobile — vertical feed (M2)
@@ -904,14 +934,32 @@ body {
   .scene {
     flex: 0 0 auto;
     width: 100vw;
-    height: 100svh;
+    height: auto;
+    min-height: 100svh;
     scroll-snap-align: start;
     scroll-snap-stop: always;
-    padding: 8vh 6vw;
+    align-items: flex-start;
+    padding: 72px 6vw 88px;
   }
-  .chrome-bottom { bottom: 14px; }
+  .scene-hero, .scene-words, .scene-end { align-items: center; }
+  .chrome-top {
+    padding: 14px 16px;
+    gap: 10px;
+    background: linear-gradient(to bottom, var(--bg) 40%, transparent);
+  }
+  .chrome-bottom {
+    bottom: 0;
+    padding: 14px 16px 18px;
+    gap: 12px;
+    background: linear-gradient(to top, var(--bg) 40%, transparent);
+  }
+  .wordmark { font-size: 11px; letter-spacing: 0.3em; }
+  .music-btn { font-size: 9px; letter-spacing: 0.2em; padding: 7px 12px; gap: 6px; }
+  .scene-badge { top: 42px; font-size: 11px; }
+  .scene-hero .scroll-cue { bottom: 80px; }
   .scene-hero .scroll-cue::after { content: "Faire défiler ↓"; }
-  .triptych, .gallery { grid-template-columns: 1fr; gap: 16px; }
+  .triptych { grid-template-columns: 1fr; gap: 16px; }
+  .triptych .ph { height: auto; aspect-ratio: 4 / 3; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .tree-row { flex-direction: column; gap: 20px; }
 

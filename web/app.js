@@ -39,15 +39,37 @@ function applyTweaks() {
   });
 }
 
-/* ---------- Scene tracking ---------- */
-function updateActiveScene() {
-  const rail = state.rail;
-  const vertical = getComputedStyle(rail).flexDirection === 'column';
-  const idx = vertical
-    ? Math.round(rail.scrollTop / window.innerHeight)
-    : Math.round(rail.scrollLeft / window.innerWidth);
-  if (idx !== state.sceneIdx) { state.sceneIdx = idx; syncSceneChrome(); }
+/* ---------- Scene tracking ----------
+   IntersectionObserver is used instead of a scroll listener because the
+   scroll container differs by viewport: on desktop the horizontal `.rail`
+   scrolls, on mobile the rail becomes `height:auto` and the window scrolls.
+   IO doesn't care which container moves — whichever scene crosses 50%
+   visible becomes `.is-active`, which triggers the reveal animations. */
+function setActiveScene(idx) {
+  idx = Math.max(0, Math.min(state.scenes.length - 1, idx));
   state.scenes.forEach((s, i) => s.classList.toggle('is-active', i === idx));
+  if (idx !== state.sceneIdx) { state.sceneIdx = idx; syncSceneChrome(); }
+}
+
+function initSceneTracking() {
+  // Desktop: horizontal rail scrolls, each scene is viewport-width.
+  // Mobile:  page scrolls, scenes can be taller than viewport.
+  // Instead of relying on IO thresholds (which break when a scene is taller
+  // than the viewport and never reaches ratio >= 0.5), compute the scene
+  // whose rect overlaps the viewport centre point on each IO callback.
+  function pickActive() {
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    for (let i = 0; i < state.scenes.length; i++) {
+      const r = state.scenes[i].getBoundingClientRect();
+      if (r.left <= cx && cx <= r.right && r.top <= cy && cy <= r.bottom) {
+        setActiveScene(i);
+        return;
+      }
+    }
+  }
+  const io = new IntersectionObserver(pickActive, { threshold: [0, 0.25, 0.5, 0.75, 1] });
+  state.scenes.forEach(s => io.observe(s));
 }
 
 function syncSceneChrome() {
@@ -66,11 +88,7 @@ function syncSceneChrome() {
 
 function goTo(idx) {
   idx = Math.max(0, Math.min(state.scenes.length - 1, idx));
-  const vertical = getComputedStyle(state.rail).flexDirection === 'column';
-  state.rail.scrollTo(
-    vertical ? { top: idx * window.innerHeight, behavior: 'smooth' }
-             : { left: idx * window.innerWidth, behavior: 'smooth' },
-  );
+  state.scenes[idx].scrollIntoView({ block: 'start', inline: 'start', behavior: 'smooth' });
 }
 
 /* ---------- Gift registry ---------- */
@@ -281,10 +299,10 @@ const GALLERY_PLACEHOLDERS = [
 
 function renderPhotos() {
   const grids = [
-    { el: document.getElementById('triptychGrid'), section: 'triptych', placeholders: TRIPTYCH_PLACEHOLDERS },
-    { el: document.getElementById('galleryGrid'),  section: 'gallery',  placeholders: GALLERY_PLACEHOLDERS },
+    { el: document.getElementById('triptychGrid'), section: 'triptych', placeholders: TRIPTYCH_PLACEHOLDERS, masonry: false },
+    { el: document.getElementById('galleryGrid'),  section: 'gallery',  placeholders: GALLERY_PLACEHOLDERS,  masonry: true  },
   ];
-  for (const { el, section, placeholders } of grids) {
+  for (const { el, section, placeholders, masonry } of grids) {
     if (!el) continue;
     el.innerHTML = '';
     const items = state.photos.filter((p) => p.section === section);
@@ -300,14 +318,16 @@ function renderPhotos() {
       continue;
     }
     for (const p of items) {
+      const v = p.version || 1;
       const pic = document.createElement('picture');
       pic.className = 'ph';
-      const sizesAttr = section === 'triptych' ? '(max-width: 820px) 100vw, 33vw' : '(max-width: 820px) 100vw, 50vw';
+      const sizesAttr = section === 'triptych' ? '(max-width: 820px) 100vw, 33vw' : '(max-width: 820px) 50vw, 33vw';
+      pic.style.aspectRatio = `${p.width} / ${p.height}`;
       pic.innerHTML = `
-        <source type="image/avif" srcset="/photos/${p.id}/thumb.avif 400w, /photos/${p.id}/medium.avif 1200w, /photos/${p.id}/full.avif 2000w" sizes="${sizesAttr}">
-        <source type="image/webp" srcset="/photos/${p.id}/thumb.webp 400w, /photos/${p.id}/medium.webp 1200w, /photos/${p.id}/full.webp 2000w" sizes="${sizesAttr}">
-        <img src="/photos/${p.id}/medium.jpg"
-             srcset="/photos/${p.id}/thumb.jpg 400w, /photos/${p.id}/medium.jpg 1200w, /photos/${p.id}/full.jpg 2000w"
+        <source type="image/avif" srcset="/photos/${p.id}/thumb.avif?v=${v} 400w, /photos/${p.id}/medium.avif?v=${v} 1200w, /photos/${p.id}/full.avif?v=${v} 2000w" sizes="${sizesAttr}">
+        <source type="image/webp" srcset="/photos/${p.id}/thumb.webp?v=${v} 400w, /photos/${p.id}/medium.webp?v=${v} 1200w, /photos/${p.id}/full.webp?v=${v} 2000w" sizes="${sizesAttr}">
+        <img src="/photos/${p.id}/medium.jpg?v=${v}"
+             srcset="/photos/${p.id}/thumb.jpg?v=${v} 400w, /photos/${p.id}/medium.jpg?v=${v} 1200w, /photos/${p.id}/full.jpg?v=${v} 2000w"
              sizes="${sizesAttr}"
              width="${p.width}" height="${p.height}"
              alt="${String(p.alt || '').replace(/"/g, '&quot;')}"
@@ -315,8 +335,46 @@ function renderPhotos() {
       `;
       el.appendChild(pic);
     }
+    if (masonry) bootstrapMasonry(el);
   }
 }
+
+// Load a classic (non-ESM) script once and resolve when it's attached to window.
+function _loadVendorScript(url) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = url;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error(`failed to load ${url}`));
+    document.head.appendChild(s);
+  });
+}
+
+let _masonryReady = null;
+async function bootstrapMasonry(grid) {
+  if (!_masonryReady) {
+    // imagesLoaded is NOT bundled inside masonry.pkgd.min.js (contrary to popular
+    // belief — the "pkgd" bundle only includes jquery-bridget/get-size/ev-emitter
+    // /fizzy-ui-utils/outlayer, not imagesloaded). Load both UMD bundles.
+    _masonryReady = Promise.all([
+      _loadVendorScript('/vendor/imagesloaded.pkgd.min.js'),
+      _loadVendorScript('/vendor/masonry.pkgd.min.js'),
+    ]).catch((err) => { _masonryReady = null; throw err; });
+  }
+  await _masonryReady;
+  window.imagesLoaded(grid, () => {
+    if (grid._masonry) grid._masonry.destroy();
+    grid._masonry = new window.Masonry(grid, {
+      itemSelector: '.ph',
+      columnWidth: '.ph',
+      percentPosition: true,
+      gutter: 12,
+      transitionDuration: 0,
+    });
+  });
+}
+
 function subscribeSSE(token) {
   const es = new EventSource(`/api/stream?k=${encodeURIComponent(token)}`);
   es.addEventListener('gift.reserved',   (e) => applyGiftPatch(JSON.parse(e.data)));
@@ -390,9 +448,8 @@ async function init() {
   state.rail = $('#rail');
   state.scenes = $$('.scene');
   syncSceneChrome();
-  updateActiveScene();
-
-  state.rail.addEventListener('scroll', () => requestAnimationFrame(updateActiveScene));
+  setActiveScene(0);
+  initSceneTracking();
 
   $('#prevBtn').addEventListener('click', () => goTo(state.sceneIdx - 1));
   $('#nextBtn').addEventListener('click', () => goTo(state.sceneIdx + 1));

@@ -10,7 +10,261 @@ const API = {
   async me() { const r = await fetch('/api/admin/me'); return r.ok; },
 };
 
+/* ============================================================
+   Lazy-load vendor UMD bundles. These are classic scripts
+   (not ES modules), so we inject a <script> tag rather than
+   using dynamic import() — import() on a non-module URL fails.
+   ============================================================ */
+const _loadedScripts = new Map();
+function loadScript(url) {
+  if (_loadedScripts.has(url)) return _loadedScripts.get(url);
+  const p = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = url;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error(`failed to load ${url}`));
+    document.head.appendChild(s);
+  });
+  _loadedScripts.set(url, p);
+  return p;
+}
+let _cropperCtor = null;
+async function loadCropper() {
+  if (_cropperCtor) return _cropperCtor;
+  await loadScript('/vendor/cropper.min.js');
+  _cropperCtor = window.Cropper;
+  return _cropperCtor;
+}
+let _sortableCtor = null;
+async function loadSortable() {
+  if (_sortableCtor) return _sortableCtor;
+  await loadScript('/vendor/sortable.min.js');
+  _sortableCtor = window.Sortable;
+  return _sortableCtor;
+}
+
+/* ============================================================
+   Toast
+   ============================================================ */
+let toastTimer = 0;
+function showToast(message) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = message;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 2400);
+}
+
+/* ============================================================
+   Client-side downscale to protect iOS memory before cropping.
+   maxSide is the longest edge in the output; returns a Blob.
+   ============================================================ */
+async function downscaleForCrop(source, maxSide = 2400) {
+  const bmp = await createImageBitmap(source);
+  const ratio = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
+  const w = Math.max(1, Math.round(bmp.width * ratio));
+  const h = Math.max(1, Math.round(bmp.height * ratio));
+  if ('OffscreenCanvas' in window) {
+    const canvas = new OffscreenCanvas(w, h);
+    canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+    return canvas.convertToBlob({ type: 'image/jpeg', quality: 0.95 });
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.95));
+}
+
+/* ============================================================
+   Crop modal
+     openCropModal({ source, section, initialAlt, queueHint })
+     - source: Blob | string URL for the Cropper image
+     - section: 'triptych' | 'gallery' (drives default ratio)
+     - initialAlt: optional string to prefill the alt field
+     - queueHint: optional string shown below the alt field
+   Returns { blob, alt, ratio } on confirm, or null on cancel.
+   ============================================================ */
+const RATIOS_BY_SECTION = {
+  triptych: [{ label: '4:5', value: 4 / 5 }],
+  gallery:  [
+    { label: '1:1',  value: 1 },
+    { label: '4:5',  value: 4 / 5 },
+    { label: '3:4',  value: 3 / 4 },
+    { label: '16:9', value: 16 / 9 },
+  ],
+};
+
+async function openCropModal({ source, section, initialAlt = '', queueHint = '' }) {
+  const Cropper = await loadCropper();
+  const dlg = document.getElementById('cropModal');
+  const img = document.getElementById('cropImage');
+  const altInput = document.getElementById('cropAlt');
+  const ratioBar = document.getElementById('cropRatios');
+  const confirmBtn = document.getElementById('cropConfirm');
+  const cancelBtn = document.getElementById('cropCancel');
+  const queueHintEl = document.getElementById('cropQueueHint');
+
+  altInput.value = initialAlt;
+  queueHintEl.textContent = queueHint;
+  confirmBtn.disabled = !altInput.value.trim();
+
+  const url = typeof source === 'string' ? source : URL.createObjectURL(source);
+  img.src = url;
+
+  const ratios = RATIOS_BY_SECTION[section];
+  ratioBar.innerHTML = '';
+  let activeRatio = ratios[0].value;
+  const ratioButtons = ratios.map((r, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = r.label;
+    b.className = i === 0 ? 'active' : '';
+    b.addEventListener('click', () => {
+      ratioButtons.forEach((bb) => bb.classList.remove('active'));
+      b.classList.add('active');
+      activeRatio = r.value;
+      cropper.setAspectRatio(activeRatio);
+    });
+    ratioBar.appendChild(b);
+    return b;
+  });
+
+  await new Promise((r) => img.addEventListener('load', r, { once: true }));
+  const cropper = new Cropper(img, {
+    aspectRatio: activeRatio,
+    viewMode: 1,
+    autoCropArea: 1,
+    responsive: true,
+    restore: true,
+    checkOrientation: true,
+    background: false,
+    movable: true,
+    zoomable: true,
+    rotatable: false,
+    scalable: false,
+  });
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      cropper.destroy();
+      if (typeof source !== 'string') URL.revokeObjectURL(url);
+      dlg.close();
+      altInput.removeEventListener('input', onInput);
+      confirmBtn.removeEventListener('click', onConfirm);
+      cancelBtn.removeEventListener('click', onCancel);
+    };
+    const onInput = () => { confirmBtn.disabled = !altInput.value.trim(); };
+    const onConfirm = async () => {
+      if (!altInput.value.trim()) return;
+      const canvas = cropper.getCroppedCanvas({ imageSmoothingQuality: 'high' });
+      canvas.toBlob((blob) => {
+        cleanup();
+        resolve({ blob, alt: altInput.value.trim(), ratio: activeRatio, data: cropper.getData(true) });
+      }, 'image/jpeg', 0.92);
+    };
+    const onCancel = () => { cleanup(); resolve(null); };
+
+    altInput.addEventListener('input', onInput);
+    confirmBtn.addEventListener('click', onConfirm);
+    cancelBtn.addEventListener('click', onCancel);
+    dlg.showModal();
+  });
+}
+
+/* ============================================================
+   Recrop modal — sends back raw pixel data {x,y,width,height}
+   on the original image (not a blob, not downscaled).
+   ============================================================ */
+async function openRecropModal({ sourceUrl, section, initialAlt = '' }) {
+  const Cropper = await loadCropper();
+  const dlg = document.getElementById('cropModal');
+  const img = document.getElementById('cropImage');
+  const altInput = document.getElementById('cropAlt');
+  const ratioBar = document.getElementById('cropRatios');
+  const confirmBtn = document.getElementById('cropConfirm');
+  const cancelBtn = document.getElementById('cropCancel');
+  const queueHintEl = document.getElementById('cropQueueHint');
+
+  altInput.value = initialAlt;
+  queueHintEl.textContent = '';
+  confirmBtn.disabled = false;
+
+  img.src = sourceUrl;
+  const ratios = RATIOS_BY_SECTION[section];
+  ratioBar.innerHTML = '';
+  let activeRatio = ratios[0].value;
+  const ratioButtons = ratios.map((r, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = r.label;
+    b.className = i === 0 ? 'active' : '';
+    b.addEventListener('click', () => {
+      ratioButtons.forEach((bb) => bb.classList.remove('active'));
+      b.classList.add('active');
+      activeRatio = r.value;
+      cropper.setAspectRatio(activeRatio);
+    });
+    ratioBar.appendChild(b);
+    return b;
+  });
+
+  await new Promise((r) => img.addEventListener('load', r, { once: true }));
+  const cropper = new Cropper(img, {
+    aspectRatio: activeRatio,
+    viewMode: 1,
+    autoCropArea: 1,
+    responsive: true,
+    restore: true,
+    checkOrientation: false, // the original was already EXIF-rotated server-side
+    background: false,
+  });
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      cropper.destroy();
+      dlg.close();
+      confirmBtn.removeEventListener('click', onConfirm);
+      cancelBtn.removeEventListener('click', onCancel);
+    };
+    const onConfirm = () => {
+      const data = cropper.getData(true); // { x, y, width, height } in source pixels
+      cleanup();
+      resolve({ x: Math.round(data.x), y: Math.round(data.y), width: Math.round(data.width), height: Math.round(data.height), alt: altInput.value.trim() });
+    };
+    const onCancel = () => { cleanup(); resolve(null); };
+
+    confirmBtn.addEventListener('click', onConfirm);
+    cancelBtn.addEventListener('click', onCancel);
+    dlg.showModal();
+  });
+}
+
+/* ============================================================
+   Delete modal — returns true on confirm, false on cancel.
+   ============================================================ */
+function openDeleteModal() {
+  const dlg = document.getElementById('deleteModal');
+  const confirmBtn = document.getElementById('deleteConfirm');
+  const cancelBtn = document.getElementById('deleteCancel');
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      dlg.close();
+      confirmBtn.removeEventListener('click', onConfirm);
+      cancelBtn.removeEventListener('click', onCancel);
+    };
+    const onConfirm = () => { cleanup(); resolve(true); };
+    const onCancel  = () => { cleanup(); resolve(false); };
+    confirmBtn.addEventListener('click', onConfirm);
+    cancelBtn.addEventListener('click', onCancel);
+    dlg.showModal();
+  });
+}
+
 const TWEAK_LABELS = {
+  // Bébé
   babyName: "Prénom",
   babyMiddle: "Second prénom",
   dateLong: "Date (long)",
@@ -19,12 +273,35 @@ const TWEAK_LABELS = {
   weight: "Poids (kg)",
   height: "Taille (cm)",
   city: "Ville",
-  maternity: "Maternité",
+  // Famille
   father: "Père",
   mother: "Mère",
   paternalGP: "Grands-parents paternels",
   maternalGP: "Grands-parents maternels",
+  // Mot des parents
+  parentsNote: "Mot des parents",
+  // Maternité
+  maternity: "Maternité",
+  addressLine: "Adresse",
+  roomNumber: "Chambre / étage",
+  // Infos pratiques
+  visitHours: "Horaires de visite",
+  visitNote: "Note sur les visites",
+  returnDate: "Retour à la maison",
+  returnNote: "Note sur le retour",
+  phone: "Téléphone",
+  phoneNote: "Note sur le téléphone",
 };
+// Section headers rendered above each group.
+const TWEAK_SECTIONS = [
+  { title: "Bébé",              keys: ["babyName", "babyMiddle", "dateLong", "dateShort", "timeBirth", "weight", "height", "city"] },
+  { title: "Famille",           keys: ["father", "mother", "paternalGP", "maternalGP"] },
+  { title: "Mot des parents",   keys: ["parentsNote"] },
+  { title: "Maternité",         keys: ["maternity", "addressLine", "roomNumber"] },
+  { title: "Infos pratiques",   keys: ["visitHours", "visitNote", "returnDate", "returnNote", "phone", "phoneNote"] },
+];
+// Keys that render as <textarea> (multi-line prose, optional line breaks).
+const TWEAK_MULTILINE = new Set(["parentsNote", "visitNote", "returnNote", "phoneNote"]);
 const ACCENT_COLORS = { gold: "#c9a66b", sage: "#8cae95", rose: "#d79898", azure: "#8fb0d9" };
 
 async function loadState() {
@@ -122,14 +399,26 @@ async function renderTweaksTab() {
   tab.innerHTML = '';
   const data = await loadState();
 
-  for (const [key, label] of Object.entries(TWEAK_LABELS)) {
-    const group = document.createElement('label');
-    const input = document.createElement('input');
-    input.dataset.key = key;
-    input.value = data.tweaks[key] ?? '';
-    group.textContent = label + ' ';
-    group.appendChild(input);
-    tab.appendChild(group);
+  for (const section of TWEAK_SECTIONS) {
+    const h = document.createElement('div');
+    h.className = 'section-title';
+    h.textContent = section.title;
+    tab.appendChild(h);
+
+    for (const key of section.keys) {
+      const label = TWEAK_LABELS[key];
+      if (!label) continue;
+      const group = document.createElement('label');
+      const field = TWEAK_MULTILINE.has(key)
+        ? document.createElement('textarea')
+        : document.createElement('input');
+      field.dataset.key = key;
+      field.value = data.tweaks[key] ?? '';
+      if (field.tagName === 'TEXTAREA') field.rows = key === 'parentsNote' ? 5 : 2;
+      group.textContent = label + ' ';
+      group.appendChild(field);
+      tab.appendChild(group);
+    }
   }
 
   // Accent swatches
@@ -164,99 +453,219 @@ async function renderTweaksTab() {
 async function renderPhotosTab() {
   const tab = $('#tab-photos');
   tab.innerHTML = `
-    <div class="section-title">Ajouter une photo</div>
-    <form id="photoUpload">
-      <label>Fichier <input type="file" name="file" accept="image/*" required></label>
-      <label>Section
-        <select name="section">
-          <option value="triptych">Triptyque (scène 03)</option>
+    <div class="section-title">Ajouter des photos</div>
+    <label class="dropzone" id="photoDropzone">
+      <div>
+        <div>📸 Glissez-déposez ou cliquez pour sélectionner</div>
+        <div class="hint">Plusieurs fichiers acceptés. Cadrez chaque photo avant envoi.</div>
+      </div>
+      <input id="photoInput" type="file" accept="image/*" multiple capture="environment">
+    </label>
+    <div class="row">
+      <label>Section par défaut
+        <select id="photoDefaultSection">
           <option value="gallery">Galerie (scène 07)</option>
+          <option value="triptych">Triptyque (scène 03)</option>
         </select>
       </label>
-      <label>Alt (description pour a11y, obligatoire)
-        <input name="alt" required maxlength="300">
-      </label>
-      <label>Position <input name="position" type="number" value="0" min="0"></label>
-      <button type="submit">Uploader</button>
-      <p id="photoUploadStatus"></p>
-    </form>
-    <div class="section-title">Existantes</div>
-    <div id="photoList"></div>
+    </div>
+    <div class="section-title">Triptyque</div>
+    <div id="photosGridTriptych" class="photos-grid"></div>
+    <div class="section-title" style="margin-top:16px;">Galerie</div>
+    <div id="photosGridGallery" class="photos-grid"></div>
   `;
 
-  const form = $('#photoUpload');
-  form.addEventListener('submit', async (e) => {
+  const dz = document.getElementById('photoDropzone');
+  const input = document.getElementById('photoInput');
+
+  dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('is-drop'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('is-drop'));
+  dz.addEventListener('drop', (e) => {
     e.preventDefault();
-    if (!form.alt.value.trim()) return;
-    const fd = new FormData(form);
-    $('#photoUploadStatus').textContent = 'Upload et traitement…';
-    const r = await fetch('/api/admin/photos', { method: 'POST', body: fd });
-    if (!r.ok) { $('#photoUploadStatus').textContent = 'Erreur ' + r.status; return; }
-    $('#photoUploadStatus').textContent = 'OK.';
-    form.reset();
-    await refreshPhotoList();
-    // Reload iframe preview to show the new photo
-    $('#previewFrame').contentWindow.location.reload();
+    dz.classList.remove('is-drop');
+    const files = Array.from(e.dataTransfer?.files ?? []).filter((f) => f.type.startsWith('image/'));
+    if (files.length) enqueueUploads(files);
+  });
+  input.addEventListener('change', () => {
+    const files = Array.from(input.files ?? []).filter((f) => f.type.startsWith('image/'));
+    if (files.length) enqueueUploads(files);
+    input.value = '';
   });
 
-  await refreshPhotoList();
+  await refreshPhotoGrid();
 }
 
-async function refreshPhotoList() {
-  const data = await loadState();
-  const list = $('#photoList');
-  list.innerHTML = '';
-  for (const p of data.photos) {
-    const el = document.createElement('div');
-    el.className = 'item';
-    const img = document.createElement('img');
-    img.src = `/photos/${p.id}/thumb.jpg`;
-    img.width = 120;
-    img.style.float = 'left';
-    img.style.marginRight = '12px';
-    el.appendChild(img);
-
-    const meta = document.createElement('div');
-    meta.innerHTML = `<b></b> — <span></span> — pos <span></span><br><small></small>`;
-    meta.querySelector('b').textContent = p.section;
-    meta.querySelector('span:nth-of-type(1)').textContent = `${p.width}×${p.height}`;
-    meta.querySelector('span:nth-of-type(2)').textContent = String(p.position);
-    meta.querySelector('small').textContent = p.alt || '(sans alt)';
-    el.appendChild(meta);
-
-    const actions = document.createElement('div');
-    actions.style.marginTop = '8px';
-    actions.style.clear = 'both';
-    const editBtn = document.createElement('button');
-    editBtn.className = 'secondary';
-    editBtn.textContent = 'Éditer alt/pos';
-    editBtn.addEventListener('click', async () => {
-      const alt = prompt('Alt text', p.alt) ?? p.alt;
-      const positionStr = prompt('Position', String(p.position)) ?? String(p.position);
-      const position = Number(positionStr);
-      await fetch(`/api/admin/photos/${p.id}`, {
-        method: 'PATCH', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ alt, position: Number.isFinite(position) ? position : p.position }),
-      });
-      await refreshPhotoList();
-      $('#previewFrame').contentWindow.location.reload();
-    });
-    const delBtn = document.createElement('button');
-    delBtn.className = 'danger';
-    delBtn.textContent = 'Supprimer';
-    delBtn.style.marginLeft = '8px';
-    delBtn.addEventListener('click', async () => {
-      if (!confirm('Supprimer cette photo ?')) return;
-      await fetch(`/api/admin/photos/${p.id}`, { method: 'DELETE' });
-      await refreshPhotoList();
-      $('#previewFrame').contentWindow.location.reload();
-    });
-    actions.appendChild(editBtn);
-    actions.appendChild(delBtn);
-    el.appendChild(actions);
-
-    list.appendChild(el);
+let _uploadQueueActive = false;
+async function enqueueUploads(files) {
+  if (_uploadQueueActive) return; // Guard against double-open of the crop modal.
+  _uploadQueueActive = true;
+  try {
+    const section = document.getElementById('photoDefaultSection').value;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const queueHint = files.length > 1 ? `Photo ${i + 1}/${files.length}` : '';
+      const downscaled = await downscaleForCrop(file);
+      const res = await openCropModal({ source: downscaled, section, queueHint });
+      if (!res) { showToast('Envoi annulé.'); break; }
+      const fd = new FormData();
+      fd.append('file', res.blob, 'crop.jpg');
+      fd.append('section', section);
+      fd.append('alt', res.alt);
+      fd.append('cropped', '1');
+      // Strictly increasing position so batch uploads preserve their order in
+      // the admin grid; the user can drag to reorder afterwards. Epoch SECONDS
+      // (not ms) to stay within PostgreSQL int32 — photos.position is integer,
+      // max 2,147,483,647; Date.now() in ms is ~1.77e12 and would overflow.
+      const position = Math.floor(Date.now() / 1000) + i;
+      fd.append('position', String(position));
+      // Toast shown AFTER the modal closes (else it's occluded by the dialog).
+      showToast(`Envoi ${i + 1}/${files.length}…`);
+      const r = await fetch('/api/admin/photos', { method: 'POST', body: fd });
+      if (!r.ok) { showToast(`Erreur ${r.status}`); break; }
+    }
+  } finally {
+    _uploadQueueActive = false;
   }
+  await refreshPhotoGrid();
+  document.getElementById('previewFrame').contentWindow.location.reload();
+}
+
+async function refreshPhotoGrid() {
+  const data = await loadState();
+  const Sortable = await loadSortable();
+  const grids = [
+    { id: 'photosGridTriptych', section: 'triptych' },
+    { id: 'photosGridGallery',  section: 'gallery'  },
+  ];
+  for (const { id, section } of grids) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.innerHTML = '';
+    const items = data.photos.filter((p) => p.section === section).sort((a, b) => a.position - b.position);
+    for (const p of items) {
+      el.appendChild(photoCard(p));
+    }
+    Sortable.create(el, {
+      group: { name: 'photos', pull: true, put: true },
+      animation: 150,
+      delay: 200,
+      delayOnTouchOnly: true,
+      onEnd: () => persistOrder(),
+    });
+  }
+}
+
+function photoCard(p) {
+  const card = document.createElement('div');
+  card.className = 'photo-card';
+  card.dataset.id = p.id;
+
+  const img = document.createElement('img');
+  img.className = 'thumb';
+  img.src = `/photos/${p.id}/thumb.jpg?v=${p.version}`;
+  img.alt = p.alt || '';
+  card.appendChild(img);
+
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  const altInput = document.createElement('input');
+  altInput.value = p.alt || '';
+  altInput.placeholder = 'alt (a11y)';
+  altInput.maxLength = 300;
+  altInput.addEventListener('change', async () => {
+    if (!altInput.value.trim()) { altInput.value = p.alt || ''; return; }
+    const r = await fetch(`/api/admin/photos/${p.id}`, {
+      method: 'PATCH', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ alt: altInput.value.trim() }),
+    });
+    if (r.ok) {
+      p.alt = altInput.value.trim();
+      showToast('Alt mis à jour.');
+    } else {
+      altInput.value = p.alt || '';
+      showToast(`Erreur ${r.status}`);
+    }
+  });
+  const badge = document.createElement('div');
+  badge.className = 'badge';
+  badge.textContent = `${p.width}×${p.height} · v${p.version}`;
+  meta.appendChild(altInput);
+  meta.appendChild(badge);
+  card.appendChild(meta);
+
+  const actions = document.createElement('div');
+  actions.className = 'card-actions';
+  const cropBtn = document.createElement('button');
+  cropBtn.className = 'secondary';
+  cropBtn.textContent = '✂ Recadrer';
+  cropBtn.addEventListener('click', async () => {
+    if (_uploadQueueActive) return;
+    _uploadQueueActive = true;
+    try {
+      const res = await openRecropModal({
+        sourceUrl: `/api/admin/photos/${p.id}/original`,
+        section: p.section,
+        initialAlt: p.alt || '',
+      });
+      if (!res) return;
+      showToast('Recadrage…');
+      const r = await fetch(`/api/admin/photos/${p.id}/recrop`, {
+        method: 'PATCH', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ x: res.x, y: res.y, width: res.width, height: res.height }),
+      });
+      if (!r.ok) { showToast(`Erreur ${r.status}`); return; }
+      // Persist alt separately if the user edited it in the modal (the recrop
+      // endpoint only updates dims + version + blurhash).
+      if (res.alt && res.alt !== (p.alt || '')) {
+        const altRes = await fetch(`/api/admin/photos/${p.id}`, {
+          method: 'PATCH', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ alt: res.alt }),
+        });
+        if (altRes.ok) p.alt = res.alt;
+      }
+      showToast('Recadré ✓');
+      await refreshPhotoGrid();
+      document.getElementById('previewFrame').contentWindow.location.reload();
+    } finally {
+      _uploadQueueActive = false;
+    }
+  });
+  const delBtn = document.createElement('button');
+  delBtn.className = 'danger';
+  delBtn.textContent = '🗑';
+  delBtn.addEventListener('click', async () => {
+    if (!(await openDeleteModal())) return;
+    const r = await fetch(`/api/admin/photos/${p.id}`, { method: 'DELETE' });
+    if (!r.ok) { showToast(`Erreur ${r.status}`); return; }
+    showToast('Supprimé ✓');
+    await refreshPhotoGrid();
+    document.getElementById('previewFrame').contentWindow.location.reload();
+  });
+  actions.appendChild(cropBtn);
+  actions.appendChild(delBtn);
+  card.appendChild(actions);
+
+  return card;
+}
+
+async function persistOrder() {
+  const order = [];
+  for (const { id, section } of [
+    { id: 'photosGridTriptych', section: 'triptych' },
+    { id: 'photosGridGallery',  section: 'gallery'  },
+  ]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    Array.from(el.children).forEach((card, position) => {
+      order.push({ id: card.dataset.id, section, position });
+    });
+  }
+  const r = await fetch('/api/admin/photos/reorder', {
+    method: 'PATCH', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ order }),
+  });
+  if (!r.ok) { showToast(`Erreur ${r.status}`); return; }
+  document.getElementById('previewFrame').contentWindow.location.reload();
 }
 async function renderGiftsTab() {
   const tab = $('#tab-gifts');

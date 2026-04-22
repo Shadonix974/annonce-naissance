@@ -17,6 +17,10 @@ export function objectKey(photoId: string, size: "thumb" | "medium" | "full", ex
   return `photos/${photoId}/${size}.${ext}`;
 }
 
+export function originalKey(photoId: string): string {
+  return `photos/${photoId}/original.jpg`;
+}
+
 export async function ensureBucket(): Promise<void> {
   if (!(await minio.bucketExists(BUCKET))) await minio.makeBucket(BUCKET);
 }
