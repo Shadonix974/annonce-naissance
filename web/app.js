@@ -191,7 +191,19 @@ function showPrivateLanding() {
   `;
 }
 
-function applyTimeline() { /* implemented in Task 28 */ }
+function applyTimeline() {
+  const list = document.getElementById('timelineList');
+  if (!list) return;
+  list.innerHTML = '';
+  for (const e of state.timeline) {
+    const el = document.createElement('div');
+    el.className = 'tick' + (e.isNow ? ' now' : '');
+    const d = document.createElement('div'); d.className = 'date'; d.textContent = e.dateLabel;
+    const l = document.createElement('div'); l.className = 'label'; l.textContent = e.text;
+    el.append(d, l);
+    list.appendChild(el);
+  }
+}
 function renderPhotos()  { /* implemented in Task 29 */ }
 function subscribeSSE()  { /* implemented in Task 31 */ }
 function registerServiceWorker() { /* implemented in Task 34 */ }
