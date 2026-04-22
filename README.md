@@ -40,7 +40,7 @@ See `docs/superpowers/specs/2026-04-22-annonce-naissance-design.md` for the full
    ```bash
    (cd api && npm install && npm run hash-password -- 'your-admin-password')
    ```
-   Paste the resulting `$argon2id$...` string into `.env` as `ADMIN_PASSWORD_HASH`.
+   Copy the pre-formatted `ADMIN_PASSWORD_HASH=$$argon2id$$…` line (with doubled dollar signs — required for docker compose `env_file` interpolation) into `.env`.
 4. Make sure the MinIO stack is already running on this host and note its docker network name — set it in `.env` as `MINIO_NETWORK` (default: `minio_default`).
 5. Build and start:
    ```bash

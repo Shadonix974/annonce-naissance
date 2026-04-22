@@ -1,0 +1,88 @@
+# Local development / smoke-test stack — totally isolated from the
+# production compose. Runs Caddy (HTTP only on 8080), Hono api,
+# Postgres, and a dedicated MinIO container. No external networks.
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d --build
+#   docker compose -f docker-compose.dev.yml logs -f api      # watch boot + access token
+#   docker compose -f docker-compose.dev.yml down -v          # clean teardown incl. volumes
+name: annonce-dev
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./Caddyfile.dev:/etc/caddy/Caddyfile:ro
+      - ./web:/srv/web:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [annonce-dev-net]
+    depends_on: [api]
+
+  api:
+    build: ./api
+    image: annonce-api:dev
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://annonce:${DB_PASSWORD}@postgres:5432/annonce
+    networks: [annonce-dev-net]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:3000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: annonce
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: annonce
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [annonce-dev-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U annonce"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9091:9001"
+    networks: [annonce-dev-net]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  caddy_data:
+  caddy_config:
+  postgres_data:
+  minio_data:
+
+networks:
+  annonce-dev-net:
+    driver: bridge

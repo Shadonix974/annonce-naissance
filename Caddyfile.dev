@@ -1,0 +1,66 @@
+# Dev Caddyfile — HTTP only, no auto-HTTPS, serves on :8080 internally.
+# Mirrors the production Caddyfile routing exactly, minus the TLS bits.
+
+{
+  auto_https off
+  servers {
+    trusted_proxies static private_ranges
+  }
+}
+
+:8080 {
+  encode zstd gzip
+
+  header {
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    Content-Security-Policy "default-src 'self'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self'; connect-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
+    -Server
+  }
+
+  @sse path /api/stream
+  reverse_proxy @sse api:3000 {
+    flush_interval -1
+    transport http {
+      read_timeout 0
+      write_timeout 0
+    }
+    header_up X-Forwarded-For {http.request.remote.host}
+  }
+
+  handle /api/* {
+    reverse_proxy api:3000 {
+      header_up X-Forwarded-For {http.request.remote.host}
+    }
+  }
+
+  handle /photos/* {
+    header Cache-Control "public, max-age=31536000, immutable"
+    reverse_proxy api:3000 {
+      header_up X-Forwarded-For {http.request.remote.host}
+    }
+  }
+
+  @sw path /sw.js
+  header @sw Cache-Control "no-cache"
+
+  handle /admin* {
+    header Cache-Control "no-store"
+    root * /srv/web
+    rewrite * /admin.html
+    file_server
+  }
+
+  handle {
+    root * /srv/web
+    @static path *.css *.js *.woff2 *.png *.svg *.ico *.webmanifest
+    header @static Cache-Control "public, max-age=31536000, immutable"
+    @html path /index.html /
+    header @html Cache-Control "no-cache"
+    try_files {path} /index.html
+    file_server {
+      precompressed br gzip
+    }
+  }
+}
