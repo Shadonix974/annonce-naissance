@@ -414,7 +414,87 @@ async function refreshTimelineList() {
     list.appendChild(el);
   }
 }
-async function renderLinkTab()     { $('#tab-link').innerHTML = '<p>… Task 39</p>'; }
-async function renderSecurityTab() { $('#tab-security').innerHTML = '<p>… Task 39</p>'; }
+async function renderLinkTab() {
+  const tab = $('#tab-link');
+  const r = await fetch('/api/admin/access-token/link');
+  const j = await r.json();
+
+  tab.innerHTML = '';
+  const title = document.createElement('div');
+  title.className = 'section-title';
+  title.textContent = 'Lien privé actuel';
+  tab.appendChild(title);
+
+  const item = document.createElement('div');
+  item.className = 'item';
+  const linkInput = document.createElement('input');
+  linkInput.id = 'linkOutput';
+  linkInput.readOnly = true;
+  linkInput.value = j.link;
+  item.appendChild(linkInput);
+
+  const actions = document.createElement('div');
+  actions.style.marginTop = '8px';
+  const copyBtn = document.createElement('button');
+  copyBtn.id = 'copyLink';
+  copyBtn.className = 'secondary';
+  copyBtn.textContent = 'Copier';
+  copyBtn.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(linkInput.value);
+    copyBtn.textContent = 'Copié ✓';
+    setTimeout(() => { copyBtn.textContent = 'Copier'; }, 1500);
+  });
+  const rotateBtn = document.createElement('button');
+  rotateBtn.className = 'danger';
+  rotateBtn.textContent = 'Régénérer';
+  rotateBtn.style.marginLeft = '8px';
+  rotateBtn.addEventListener('click', async () => {
+    if (!confirm('Confirmer la régénération ? Les anciens liens ne fonctionneront plus.')) return;
+    const r2 = await fetch('/api/admin/access-token/rotate', { method: 'POST' });
+    const j2 = await r2.json();
+    linkInput.value = j2.link;
+    CURRENT_TOKEN = j2.token;
+    setPreviewSrc();
+  });
+  actions.appendChild(copyBtn);
+  actions.appendChild(rotateBtn);
+  item.appendChild(actions);
+
+  const warning = document.createElement('p');
+  warning.style.marginTop = '12px';
+  warning.style.fontSize = '13px';
+  warning.style.color = 'var(--muted)';
+  warning.textContent = '⚠ Régénérer invalide tous les liens déjà distribués. Les visiteurs en cours seront déconnectés à la prochaine requête.';
+  item.appendChild(warning);
+
+  tab.appendChild(item);
+}
+async function renderSecurityTab() {
+  const tab = $('#tab-security');
+  tab.innerHTML = '';
+
+  const title = document.createElement('div');
+  title.className = 'section-title';
+  title.textContent = 'Sessions';
+  tab.appendChild(title);
+
+  const item = document.createElement('div');
+  item.className = 'item';
+  const p = document.createElement('p');
+  p.textContent = 'Toutes les sessions admin ouvertes (y compris la vôtre) seront fermées.';
+  item.appendChild(p);
+
+  const killBtn = document.createElement('button');
+  killBtn.className = 'danger';
+  killBtn.textContent = 'Déconnecter toutes les sessions';
+  killBtn.addEventListener('click', async () => {
+    if (!confirm('Déconnecter tout le monde ?')) return;
+    await fetch('/api/admin/destroy-all-sessions', { method: 'POST' });
+    location.reload();
+  });
+  item.appendChild(killBtn);
+
+  tab.appendChild(item);
+}
 
 bootstrap();
