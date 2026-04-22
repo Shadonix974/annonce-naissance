@@ -249,8 +249,171 @@ async function refreshPhotoList() {
     list.appendChild(el);
   }
 }
-async function renderGiftsTab()    { $('#tab-gifts').innerHTML = '<p>… Task 38</p>'; }
-async function renderTimelineTab() { $('#tab-timeline').innerHTML = '<p>… Task 38</p>'; }
+async function renderGiftsTab() {
+  const tab = $('#tab-gifts');
+  tab.innerHTML = `
+    <form id="giftAdd">
+      <div class="row">
+        <label>Nom <input name="name" required maxlength="160"></label>
+        <label>Fourchette <input name="rangeText" placeholder="30–50 €" required maxlength="40"></label>
+      </div>
+      <label>URL (optionnel) <input name="url" type="url"></label>
+      <label>Position <input name="position" type="number" value="0" min="0"></label>
+      <button>Ajouter</button>
+    </form>
+    <div class="section-title">Liste</div>
+    <div id="giftList"></div>
+  `;
+  $('#giftAdd').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.currentTarget;
+    await fetch('/api/admin/gifts', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: f.name.value,
+        rangeText: f.rangeText.value,
+        url: f.url.value || undefined,
+        position: Number(f.position.value),
+      }),
+    });
+    f.reset();
+    await refreshGiftList();
+  });
+  await refreshGiftList();
+}
+
+async function refreshGiftList() {
+  const data = await loadState();
+  const list = $('#giftList');
+  list.innerHTML = '';
+  for (const g of data.gifts) {
+    const el = document.createElement('div');
+    el.className = 'item';
+
+    const head = document.createElement('div');
+    const b = document.createElement('b'); b.textContent = g.name;
+    head.appendChild(b);
+    head.appendChild(document.createTextNode(` — ${g.rangeText} — pos ${g.position}`));
+    el.appendChild(head);
+
+    const status = document.createElement('small');
+    status.style.display = 'block';
+    if (g.takenBy) {
+      status.textContent = `Pris par ${g.takenBy}${g.takenNote ? ' — « ' + g.takenNote + ' »' : ''}`;
+    } else {
+      status.textContent = 'disponible';
+    }
+    el.appendChild(status);
+
+    const actions = document.createElement('div');
+    actions.style.marginTop = '8px';
+    const editBtn = document.createElement('button');
+    editBtn.className = 'secondary';
+    editBtn.textContent = 'Éditer';
+    editBtn.addEventListener('click', async () => {
+      const name = prompt('Nom', g.name) ?? g.name;
+      const rangeText = prompt('Fourchette', g.rangeText) ?? g.rangeText;
+      const positionStr = prompt('Position', String(g.position)) ?? String(g.position);
+      const position = Number(positionStr);
+      await fetch(`/api/admin/gifts/${g.id}`, {
+        method: 'PATCH', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name, rangeText, position: Number.isFinite(position) ? position : g.position }),
+      });
+      await refreshGiftList();
+    });
+    actions.appendChild(editBtn);
+
+    if (g.takenBy) {
+      const force = document.createElement('button');
+      force.className = 'secondary';
+      force.textContent = 'Forcer libre';
+      force.style.marginLeft = '8px';
+      force.addEventListener('click', async () => {
+        await fetch(`/api/admin/gifts/${g.id}/force-unreserve`, { method: 'POST' });
+        await refreshGiftList();
+      });
+      actions.appendChild(force);
+    }
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'danger';
+    delBtn.textContent = 'Supprimer';
+    delBtn.style.marginLeft = '8px';
+    delBtn.addEventListener('click', async () => {
+      if (!confirm('Supprimer ?')) return;
+      await fetch(`/api/admin/gifts/${g.id}`, { method: 'DELETE' });
+      await refreshGiftList();
+    });
+    actions.appendChild(delBtn);
+    el.appendChild(actions);
+
+    list.appendChild(el);
+  }
+}
+async function renderTimelineTab() {
+  const tab = $('#tab-timeline');
+  tab.innerHTML = `
+    <form id="tlAdd">
+      <label>Date (libre) <input name="dateLabel" required maxlength="80"></label>
+      <label>Texte <textarea name="text" required maxlength="400"></textarea></label>
+      <label>Position <input name="position" type="number" value="0" min="0"></label>
+      <label><input type="checkbox" name="isNow"> Marquer "maintenant"</label>
+      <button>Ajouter</button>
+    </form>
+    <div class="section-title">Événements</div>
+    <div id="tlList"></div>
+  `;
+  $('#tlAdd').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.currentTarget;
+    await fetch('/api/admin/timeline', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        dateLabel: f.dateLabel.value,
+        text: f.text.value,
+        position: Number(f.position.value),
+        isNow: f.isNow.checked,
+      }),
+    });
+    f.reset();
+    await refreshTimelineList();
+  });
+  await refreshTimelineList();
+}
+
+async function refreshTimelineList() {
+  const data = await loadState();
+  const list = $('#tlList');
+  list.innerHTML = '';
+  for (const ev of data.timeline) {
+    const el = document.createElement('div');
+    el.className = 'item';
+
+    const b = document.createElement('b');
+    b.textContent = ev.dateLabel;
+    el.appendChild(b);
+    el.appendChild(document.createTextNode(`${ev.isNow ? ' · now' : ''} — pos ${ev.position}`));
+    el.appendChild(document.createElement('br'));
+    const small = document.createElement('small');
+    small.textContent = ev.text;
+    el.appendChild(small);
+
+    const actions = document.createElement('div');
+    actions.style.marginTop = '8px';
+    const delBtn = document.createElement('button');
+    delBtn.className = 'danger';
+    delBtn.textContent = 'Supprimer';
+    delBtn.addEventListener('click', async () => {
+      if (!confirm('Supprimer ?')) return;
+      await fetch(`/api/admin/timeline/${ev.id}`, { method: 'DELETE' });
+      await refreshTimelineList();
+    });
+    actions.appendChild(delBtn);
+    el.appendChild(actions);
+
+    list.appendChild(el);
+  }
+}
 async function renderLinkTab()     { $('#tab-link').innerHTML = '<p>… Task 39</p>'; }
 async function renderSecurityTab() { $('#tab-security').innerHTML = '<p>… Task 39</p>'; }
 
