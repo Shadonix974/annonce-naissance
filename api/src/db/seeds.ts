@@ -62,8 +62,14 @@ export async function runSeeds(): Promise<void> {
     const existingSettings = await tx.select().from(settings).limit(1);
     if (existingSettings.length === 0) {
       const token = randomBytes(18).toString("base64url");
-      await tx.insert(settings).values({ id: 1, accessToken: token });
-      log.info({ token }, "🔑 Access token généré — régénérable depuis /admin");
+      const printToken = randomBytes(18).toString("base64url");
+      await tx.insert(settings).values({ id: 1, accessToken: token, printAccessToken: printToken });
+      log.info({ token, printToken }, "🔑 Access tokens generated — régénérables depuis /admin");
+    } else if (!existingSettings[0].printAccessToken) {
+      // Existing deploy without a print token yet — backfill once.
+      const printToken = randomBytes(18).toString("base64url");
+      await tx.update(settings).set({ printAccessToken: printToken }).where(sql`${settings.id} = 1`);
+      log.info({ printToken }, "🔑 Print access token backfilled");
     }
 
     // Tweaks: add any key that's missing (idempotent). We never overwrite an
