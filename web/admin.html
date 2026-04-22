@@ -2,10 +2,11 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <title>Admin · Faire-part</title>
   <link rel="stylesheet" href="/admin.css">
+  <link rel="stylesheet" href="/vendor/cropper.min.css">
 </head>
 <body>
   <div id="loginPanel" class="login" hidden>
@@ -42,6 +43,39 @@
       <iframe id="previewFrame" title="Aperçu"></iframe>
     </aside>
   </div>
+
+  <dialog id="cropModal" class="crop-modal">
+    <form method="dialog" class="crop-modal-inner">
+      <div class="crop-stage">
+        <img id="cropImage" alt="">
+      </div>
+      <div class="crop-controls">
+        <div class="crop-title">Cadrer la photo</div>
+        <div class="ratios" id="cropRatios"></div>
+        <label class="alt-field">Alt (description pour a11y, obligatoire)
+          <input id="cropAlt" maxlength="300" required>
+        </label>
+        <div class="queue-hint" id="cropQueueHint"></div>
+        <div class="actions">
+          <button type="button" class="secondary" id="cropCancel">Annuler</button>
+          <button type="button" id="cropConfirm" disabled>Suivant →</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="deleteModal" class="delete-modal">
+    <form method="dialog" class="delete-modal-inner">
+      <div class="delete-title">Supprimer cette photo ?</div>
+      <div class="delete-body">Cette action est définitive.</div>
+      <div class="actions">
+        <button type="button" class="secondary" id="deleteCancel">Annuler</button>
+        <button type="button" class="danger" id="deleteConfirm">Supprimer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
 
   <script type="module" src="/admin.js"></script>
 </body>
