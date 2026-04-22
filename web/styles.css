@@ -901,6 +901,13 @@ body {
 .gift-modal input:focus, .gift-modal textarea:focus {
   border-bottom-color: var(--gold);
 }
+/* Kill the global keyboard focus-ring (styles.css:976-985) specifically
+   inside the gift modal — the outline-offset: 4px rectangle bled over
+   the label text above. The gold border-bottom above is our focus
+   indicator instead. Specificity (0,2,1) > the global (0,1,1). */
+.gift-modal input:focus-visible, .gift-modal textarea:focus-visible {
+  outline: none;
+}
 .gift-modal textarea { resize: vertical; }
 .gift-modal-actions { display:flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
 .gift-modal-actions button {
