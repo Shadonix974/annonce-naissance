@@ -459,3 +459,36 @@ test("PATCH /reorder rejects unknown id", async () => {
   }));
   expect(res.status).toBe(404);
 }, 30_000);
+
+test("PATCH /reorder rolls back valid items when one id is unknown", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+
+  const fd = new FormData();
+  fd.append("file", new Blob([await makePng()], { type: "image/png" }), "x.png");
+  fd.append("section", "gallery");
+  fd.append("alt", "x");
+  fd.append("position", "0");
+  const up = await app.fetch(uploadReq(cookie, fd));
+  const { id } = await up.json() as { id: string };
+
+  const res = await app.fetch(new Request("http://localhost:3000/api/admin/photos/reorder", {
+    method: "PATCH",
+    headers: { "content-type": "application/json", origin: "http://localhost:3000", cookie },
+    body: JSON.stringify({
+      order: [
+        { id, section: "triptych", position: 7 },                                          // valid
+        { id: "00000000-0000-0000-0000-000000000000", section: "gallery", position: 0 },  // bogus
+      ],
+    }),
+  }));
+  expect(res.status).toBe(404);
+
+  // The valid entry must NOT have been persisted (transaction rolled back).
+  const token = (await getAccessToken())!;
+  const stateRes = await app.fetch(new Request("http://localhost:3000/api/state", {
+    headers: { "x-access-token": token },
+  }));
+  const state = await stateRes.json() as { photos: Array<{ id: string; section: string; position: number }> };
+  expect(state.photos.find((p) => p.id === id)).toMatchObject({ section: "gallery", position: 0 });
+}, 60_000);

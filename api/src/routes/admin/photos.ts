@@ -77,6 +77,9 @@ app.post("/", async (c) => {
   return c.json(row, 201);
 });
 
+// Must be declared BEFORE /:id — Hono's router does NOT prioritise literal
+// segments over params in this version, so /:id would otherwise match
+// "reorder" as an id.
 app.patch(
   "/reorder",
   zValidator("json", z.object({
