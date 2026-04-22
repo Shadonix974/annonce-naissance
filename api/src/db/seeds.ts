@@ -65,7 +65,7 @@ export async function runSeeds(): Promise<void> {
       const printToken = randomBytes(18).toString("base64url");
       await tx.insert(settings).values({ id: 1, accessToken: token, printAccessToken: printToken });
       log.info({ token, printToken }, "🔑 Access tokens generated — régénérables depuis /admin");
-    } else if (!existingSettings[0].printAccessToken) {
+    } else if (!existingSettings[0]?.printAccessToken) {
       // Existing deploy without a print token yet — backfill once.
       const printToken = randomBytes(18).toString("base64url");
       await tx.update(settings).set({ printAccessToken: printToken }).where(sql`${settings.id} = 1`);
