@@ -8,6 +8,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Italianno&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#1a2340">
+  <meta property="og:title" content="Faire-part de naissance">
+  <meta property="og:description" content="Un petit être né ce printemps.">
+  <meta property="og:image" content="/og.png">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 </head>
 <body>
   <div class="stars" aria-hidden="true"></div>
@@ -206,36 +216,9 @@
       </div>
     </section>
 
-    <!-- 08 — LIVRE D'OR -->
-    <section class="scene scene-guestbook" data-screen-label="08 Livre d'or">
-      <div class="scene-badge reveal r-1">08 · Livre d'or</div>
-      <div class="guest-wrap">
-        <div class="guest-left">
-          <div class="overline reveal r-1">Laissez un mot</div>
-          <div class="script-h script reveal r-2">Quelques mots</div>
-          <h2 class="title display reveal r-3">pour Léonard</h2>
-          <p class="body reveal r-4">
-            Vos messages seront relus dans quelques années,
-            quand il sera assez grand pour les comprendre.
-          </p>
-          <form class="guest-form reveal r-5" id="guestForm">
-            <div class="row">
-              <input type="text" name="name" placeholder="Votre prénom" required />
-              <input type="text" name="from" placeholder="Depuis… (ville, lien)" />
-            </div>
-            <textarea name="body" placeholder="Votre message pour lui…" required></textarea>
-            <button type="submit" class="send-btn">Déposer le mot</button>
-          </form>
-        </div>
-        <div class="guest-right reveal r-4">
-          <div id="msgList"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 09 — LISTE DE NAISSANCE -->
-    <section class="scene scene-registry" data-screen-label="09 Liste de naissance">
-      <div class="scene-badge reveal r-1">09 · Liste de naissance</div>
+    <!-- 08 — LISTE DE NAISSANCE -->
+    <section class="scene scene-registry" data-screen-label="08 Liste de naissance">
+      <div class="scene-badge reveal r-1">08 · Liste de naissance</div>
       <div class="reg-wrap">
         <div class="reg-head">
           <div class="overline reveal r-1">Si le cœur vous en dit</div>
@@ -249,9 +232,9 @@
       </div>
     </section>
 
-    <!-- 10 — INFOS PRATIQUES -->
-    <section class="scene scene-info" data-screen-label="10 Infos pratiques">
-      <div class="scene-badge reveal r-1">10 · Infos pratiques</div>
+    <!-- 09 — INFOS PRATIQUES -->
+    <section class="scene scene-info" data-screen-label="09 Infos pratiques">
+      <div class="scene-badge reveal r-1">09 · Infos pratiques</div>
       <div class="info-wrap">
         <div class="info-head">
           <div class="overline reveal r-1">Venir le rencontrer</div>
@@ -283,9 +266,9 @@
       </div>
     </section>
 
-    <!-- 11 — MERCI -->
-    <section class="scene scene-end" data-screen-label="11 Merci">
-      <div class="scene-badge reveal r-1">11 · Avec tendresse</div>
+    <!-- 10 — MERCI -->
+    <section class="scene scene-end" data-screen-label="10 Merci">
+      <div class="scene-badge reveal r-1">10 · Avec tendresse</div>
       <div class="overline reveal r-1">Avec toute notre tendresse</div>
       <div class="script-h script reveal r-2">Merci</div>
       <div class="sig reveal r-3">
@@ -307,12 +290,11 @@
       <div class="seg" title="Famille"></div>
       <div class="seg" title="Chronologie"></div>
       <div class="seg" title="Galerie"></div>
-      <div class="seg" title="Livre d'or"></div>
       <div class="seg" title="Liste de naissance"></div>
       <div class="seg" title="Infos pratiques"></div>
       <div class="seg" title="Merci"></div>
     </div>
-    <div class="scene-count" id="sceneCount">01 / 11</div>
+    <div class="scene-count" id="sceneCount">01 / 10</div>
     <div class="nav-btns">
       <button class="nav-btn" id="prevBtn" aria-label="Précédent">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 6l-6 6 6 6"/></svg>
@@ -322,9 +304,6 @@
       </button>
     </div>
   </nav>
-
-  <!-- Tweaks panel -->
-  <aside class="tweaks" id="tweaks"></aside>
 
   <script src="app.js"></script>
 </body>

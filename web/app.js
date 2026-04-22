@@ -2,51 +2,23 @@
    Annonce-naissance — runtime
    ============================================================= */
 
-const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-  "babyName": "Léonard",
-  "babyMiddle": "Augustin",
-  "dateLong": "14 avril 2026",
-  "dateShort": "14.04.2026",
-  "timeBirth": "04h27",
-  "weight": "3,42",
-  "height": "51",
-  "city": "Paris",
-  "maternity": "Maternité des Lilas",
-  "father": "Julien",
-  "mother": "Camille",
-  "paternalGP": "Pierre & Hélène",
-  "maternalGP": "Antoine & Marie",
-  "accent": "gold"
-}/*EDITMODE-END*/;
-
-const ACCENTS = {
-  gold:    { "--gold": "oklch(0.72 0.08 80)",  "--gold-soft": "oklch(0.82 0.05 85)"  },
-  sage:    { "--gold": "oklch(0.72 0.06 150)", "--gold-soft": "oklch(0.82 0.04 150)" },
-  rose:    { "--gold": "oklch(0.76 0.08 25)",  "--gold-soft": "oklch(0.85 0.05 25)"  },
-  azure:   { "--gold": "oklch(0.78 0.08 230)", "--gold-soft": "oklch(0.86 0.05 230)" }
-};
-
 const state = {
-  tweaks: { ...TWEAK_DEFAULTS },
+  tweaks: {},
+  photos: [],
+  gifts: [],
+  timeline: [],
   sceneIdx: 0,
   scenes: [],
   rail: null,
-  music: null,
   musicPlaying: false,
-  messages: [
-    { name: "Grand-mère Hélène", date: "15 avril 2026", body: "Le monde est plus doux depuis ce matin. Bienvenue mon petit prince, tu es déjà tant aimé." },
-    { name: "Tante Sophie", date: "15 avril 2026", body: "Un immense bonheur pour toute la famille. Hâte de rencontrer ce petit bout de vous deux." },
-    { name: "Oncle Marc", date: "16 avril 2026", body: "Félicitations à vous trois. Les nuits vont être courtes mais les souvenirs seront immenses." },
-    { name: "Claire & Paul", date: "17 avril 2026", body: "Plein de tendresse pour vous quatre. On vous embrasse fort et on a hâte de le voir." }
-  ],
-  gifts: [
-    { name: "Doudou en lin", range: "25–40 €", taken: false },
-    { name: "Mobile musical en bois", range: "60–80 €", taken: true },
-    { name: "Gigoteuse coton bio", range: "45 €", taken: false },
-    { name: "Livre d'éveil tissu", range: "18 €", taken: false },
-    { name: "Chaussons en cuir souple", range: "32 €", taken: true },
-    { name: "Tapis d'éveil en laine", range: "90 €", taken: false }
-  ]
+  reservedGiftIds: new Set(JSON.parse(localStorage.getItem('reservedGiftIds') || '[]')),
+};
+
+const ACCENTS = {
+  gold:  { "--gold": "oklch(0.72 0.08 80)",  "--gold-soft": "oklch(0.82 0.05 85)"  },
+  sage:  { "--gold": "oklch(0.72 0.06 150)", "--gold-soft": "oklch(0.82 0.04 150)" },
+  rose:  { "--gold": "oklch(0.76 0.08 25)",  "--gold-soft": "oklch(0.85 0.05 25)"  },
+  azure: { "--gold": "oklch(0.78 0.08 230)", "--gold-soft": "oklch(0.86 0.05 230)" },
 };
 
 /* ---------- DOM helpers ---------- */
@@ -70,11 +42,11 @@ function applyTweaks() {
 /* ---------- Scene tracking ---------- */
 function updateActiveScene() {
   const rail = state.rail;
-  const idx = Math.round(rail.scrollLeft / window.innerWidth);
-  if (idx !== state.sceneIdx) {
-    state.sceneIdx = idx;
-    syncSceneChrome();
-  }
+  const vertical = getComputedStyle(rail).flexDirection === 'column';
+  const idx = vertical
+    ? Math.round(rail.scrollTop / window.innerHeight)
+    : Math.round(rail.scrollLeft / window.innerWidth);
+  if (idx !== state.sceneIdx) { state.sceneIdx = idx; syncSceneChrome(); }
   state.scenes.forEach((s, i) => s.classList.toggle('is-active', i === idx));
 }
 
@@ -94,52 +66,23 @@ function syncSceneChrome() {
 
 function goTo(idx) {
   idx = Math.max(0, Math.min(state.scenes.length - 1, idx));
-  state.rail.scrollTo({ left: idx * window.innerWidth, behavior: 'smooth' });
-}
-
-/* ---------- Guestbook ---------- */
-function renderMessages() {
-  const list = $('#msgList');
-  list.innerHTML = '';
-  state.messages.forEach(m => {
-    const el = document.createElement('div');
-    el.className = 'msg';
-    el.innerHTML = `
-      <div class="msg-head">
-        <div class="msg-name"></div>
-        <div class="msg-date"></div>
-      </div>
-      <div class="msg-body"></div>
-    `;
-    el.querySelector('.msg-name').textContent = m.name;
-    el.querySelector('.msg-date').textContent = m.date;
-    el.querySelector('.msg-body').textContent = `« ${m.body} »`;
-    list.appendChild(el);
-  });
-}
-
-function handleGuestSubmit(e) {
-  e.preventDefault();
-  const form = e.currentTarget;
-  const name = form.querySelector('[name=name]').value.trim();
-  const body = form.querySelector('[name=body]').value.trim();
-  if (!name || !body) return;
-  const today = new Date();
-  const dateStr = today.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-  state.messages.unshift({ name, date: dateStr, body });
-  form.reset();
-  renderMessages();
+  const vertical = getComputedStyle(state.rail).flexDirection === 'column';
+  state.rail.scrollTo(
+    vertical ? { top: idx * window.innerHeight, behavior: 'smooth' }
+             : { left: idx * window.innerWidth, behavior: 'smooth' },
+  );
 }
 
 /* ---------- Gift registry ---------- */
 function renderGifts() {
-  const grid = $('#regGrid');
+  const grid = document.getElementById('regGrid');
   grid.innerHTML = '';
-  state.gifts.forEach((g, i) => {
+  for (const g of state.gifts) {
     const el = document.createElement('div');
-    el.className = 'gift' + (g.taken ? ' taken' : '');
+    el.className = 'gift' + (g.takenBy ? ' taken' : '');
+    el.dataset.id = g.id;
     el.innerHTML = `
-      <div class="ph" data-label="cadeau · photo"></div>
+      <div class="ph"></div>
       <div class="g-name"></div>
       <div class="g-meta">
         <span class="g-range"></span>
@@ -147,14 +90,11 @@ function renderGifts() {
       </div>
     `;
     el.querySelector('.g-name').textContent = g.name;
-    el.querySelector('.g-range').textContent = g.range;
-    el.querySelector('.g-status').textContent = g.taken ? '✓ Réservé' : '○ Disponible';
-    el.addEventListener('click', () => {
-      state.gifts[i].taken = !state.gifts[i].taken;
-      renderGifts();
-    });
+    el.querySelector('.g-range').textContent = g.rangeText;
+    el.querySelector('.g-status').textContent = g.takenBy ? `✓ Pris par ${g.takenBy}` : '○ Disponible';
+    // Click handler with modal is added in Task 30.
     grid.appendChild(el);
-  });
+  }
 }
 
 /* ---------- Ambient music (Web Audio, subtle) ---------- */
@@ -177,7 +117,6 @@ function startMusic() {
   reverb.gain.value = 0.3;
   reverb.connect(master);
 
-  const loopStart = ctx.currentTime + 0.1;
   const step = 1.6;
 
   const interval = setInterval(() => {
@@ -219,88 +158,87 @@ function toggleMusic() {
   if (state.musicPlaying) startMusic(); else stopMusic();
 }
 
-/* ---------- Tweaks (edit mode integration) ---------- */
-function buildTweaksPanel() {
-  const panel = $('#tweaks');
-  panel.innerHTML = `
-    <h4>Tweaks</h4>
-    <div class="group">
-      <label>Prénom</label>
-      <input type="text" data-tweak="babyName" value="${state.tweaks.babyName}"
-             style="background:transparent;border:0;border-bottom:1px solid oklch(0.96 0.015 85 / 0.25);color:var(--cream);font-family:var(--serif);font-size:16px;padding:6px 2px;width:100%;">
-    </div>
-    <div class="group">
-      <label>Date</label>
-      <input type="text" data-tweak="dateLong" value="${state.tweaks.dateLong}"
-             style="background:transparent;border:0;border-bottom:1px solid oklch(0.96 0.015 85 / 0.25);color:var(--cream);font-family:var(--serif);font-size:16px;padding:6px 2px;width:100%;">
-    </div>
-    <div class="group">
-      <label>Accent doré</label>
-      <div class="swatches">
-        ${Object.entries(ACCENTS).map(([k, v]) =>
-          `<div class="sw ${state.tweaks.accent === k ? 'active' : ''}"
-                data-accent="${k}"
-                style="background:${v['--gold']};" title="${k}"></div>`
-        ).join('')}
+/* ---------- Token bootstrap ---------- */
+function getAccessToken() {
+  const url = new URL(location.href);
+  const fromUrl = url.searchParams.get('k');
+  if (fromUrl) {
+    localStorage.setItem('accessToken', fromUrl);
+    url.searchParams.delete('k');
+    history.replaceState(null, '', url.toString());
+    return fromUrl;
+  }
+  return localStorage.getItem('accessToken');
+}
+
+async function fetchState(token) {
+  const r = await fetch('/api/state', { headers: { 'X-Access-Token': token } });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error('state_fetch_failed');
+  return r.json();
+}
+
+function showPrivateLanding() {
+  document.body.innerHTML = `
+    <main style="min-height:100vh;display:grid;place-items:center;padding:2rem;text-align:center;
+                 background:oklch(0.22 0.045 255);color:oklch(0.965 0.015 85);font-family:'Cormorant Garamond',serif;">
+      <div style="max-width:420px;">
+        <p style="font-size:14px;letter-spacing:.35em;text-transform:uppercase;opacity:.6;">Introuvable</p>
+        <h1 style="font-weight:300;font-size:36px;margin:12px 0 16px;">Ce faire-part n'existe pas ou plus.</h1>
+        <p style="opacity:.7;">Vérifiez le lien reçu par les parents.</p>
       </div>
-    </div>
-    <div class="group" style="font-family:var(--serif);font-style:italic;font-size:12px;opacity:0.55;line-height:1.5;margin-top:18px;">
-      Modifiez aussi les autres champs dans le code :
-      prénom(2), heure, poids, parents, grands-parents, ville, maternité.
-    </div>
+    </main>
   `;
-
-  panel.querySelectorAll('input[data-tweak]').forEach(inp => {
-    inp.addEventListener('input', () => {
-      state.tweaks[inp.dataset.tweak] = inp.value;
-      applyTweaks();
-      postTweaks({ [inp.dataset.tweak]: inp.value });
-    });
-  });
-  panel.querySelectorAll('.sw').forEach(sw => {
-    sw.addEventListener('click', () => {
-      state.tweaks.accent = sw.dataset.accent;
-      panel.querySelectorAll('.sw').forEach(s => s.classList.toggle('active', s === sw));
-      applyTweaks();
-      postTweaks({ accent: sw.dataset.accent });
-    });
-  });
 }
 
-function postTweaks(edits) {
-  try { window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*'); } catch (e) {}
-}
+function applyTimeline() { /* implemented in Task 28 */ }
+function renderPhotos()  { /* implemented in Task 29 */ }
+function subscribeSSE()  { /* implemented in Task 31 */ }
+function registerServiceWorker() { /* implemented in Task 34 */ }
 
+/* ---------- Edit mode integration ---------- */
 window.addEventListener('message', (e) => {
   const d = e.data || {};
-  if (d.type === '__activate_edit_mode') $('#tweaks').classList.add('open');
-  if (d.type === '__deactivate_edit_mode') $('#tweaks').classList.remove('open');
+  if (d.type === '__edit_mode_set_keys' && d.edits) {
+    Object.assign(state.tweaks, d.edits);
+    applyTweaks();
+  }
 });
 
 /* ---------- Boot ---------- */
-function init() {
+async function init() {
+  const token = getAccessToken();
+  if (!token) { showPrivateLanding(); return; }
+
+  let data;
+  try { data = await fetchState(token); }
+  catch { showPrivateLanding(); return; }
+  if (!data) { showPrivateLanding(); return; }
+
+  Object.assign(state, data);
+
   state.rail = $('#rail');
   state.scenes = $$('.scene');
   syncSceneChrome();
   updateActiveScene();
 
-  state.rail.addEventListener('scroll', () => {
-    requestAnimationFrame(updateActiveScene);
-  });
+  state.rail.addEventListener('scroll', () => requestAnimationFrame(updateActiveScene));
 
   $('#prevBtn').addEventListener('click', () => goTo(state.sceneIdx - 1));
   $('#nextBtn').addEventListener('click', () => goTo(state.sceneIdx + 1));
-  $$('#progress .seg').forEach((el, i) =>
-    el.addEventListener('click', () => goTo(i))
-  );
+  $$('#progress .seg').forEach((el, i) => el.addEventListener('click', () => goTo(i)));
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); goTo(state.sceneIdx + 1); }
-    if (e.key === 'ArrowLeft'  || e.key === 'PageUp')   { e.preventDefault(); goTo(state.sceneIdx - 1); }
+    const vertical = getComputedStyle(state.rail).flexDirection === 'column';
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || (vertical && e.key === 'ArrowDown'))
+      { e.preventDefault(); goTo(state.sceneIdx + 1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'PageUp' || (vertical && e.key === 'ArrowUp'))
+      { e.preventDefault(); goTo(state.sceneIdx - 1); }
   });
 
-  // Translate vertical wheel into horizontal scroll on the rail
   state.rail.addEventListener('wheel', (e) => {
+    const vertical = getComputedStyle(state.rail).flexDirection === 'column';
+    if (vertical) return;
     if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
       e.preventDefault();
       state.rail.scrollLeft += e.deltaY;
@@ -308,15 +246,13 @@ function init() {
   }, { passive: false });
 
   $('#musicBtn').addEventListener('click', toggleMusic);
-  $('#guestForm').addEventListener('submit', handleGuestSubmit);
 
-  renderMessages();
-  renderGifts();
   applyTweaks();
-  buildTweaksPanel();
-
-  // Announce tweak availability to host
-  try { window.parent.postMessage({ type: '__edit_mode_available' }, '*'); } catch (e) {}
+  applyTimeline();
+  renderPhotos();
+  renderGifts();
+  subscribeSSE(token);
+  registerServiceWorker();
 }
 
 document.addEventListener('DOMContentLoaded', init);
