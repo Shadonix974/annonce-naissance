@@ -394,3 +394,68 @@ test("PATCH /:id/recrop returns 404 for unknown photo", async () => {
   }));
   expect(res.status).toBe(404);
 }, 30_000);
+
+test("PATCH /reorder requires admin", async () => {
+  const app = await buildApp();
+  const res = await app.fetch(new Request("http://localhost:3000/api/admin/photos/reorder", {
+    method: "PATCH",
+    headers: { "content-type": "application/json", origin: "http://localhost:3000" },
+    body: JSON.stringify({ order: [] }),
+  }));
+  expect(res.status).toBe(401);
+}, 30_000);
+
+test("PATCH /reorder updates section + position in a single transaction", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+
+  const ids: string[] = [];
+  for (let i = 0; i < 3; i++) {
+    const fd = new FormData();
+    fd.append("file", new Blob([await makePng()], { type: "image/png" }), `x${i}.png`);
+    fd.append("section", "gallery");
+    fd.append("alt", `p${i}`);
+    fd.append("position", String(i));
+    const up = await app.fetch(uploadReq(cookie, fd));
+    const p = await up.json() as { id: string };
+    ids.push(p.id);
+  }
+
+  // Reverse the gallery order and move the first photo to triptych.
+  const res = await app.fetch(new Request("http://localhost:3000/api/admin/photos/reorder", {
+    method: "PATCH",
+    headers: { "content-type": "application/json", origin: "http://localhost:3000", cookie },
+    body: JSON.stringify({
+      order: [
+        { id: ids[0], section: "triptych", position: 0 },
+        { id: ids[2], section: "gallery", position: 0 },
+        { id: ids[1], section: "gallery", position: 1 },
+      ],
+    }),
+  }));
+  expect(res.status).toBe(200);
+  expect(await res.json()).toEqual({ ok: true });
+
+  const token = (await getAccessToken())!;
+  const stateRes = await app.fetch(new Request("http://localhost:3000/api/state", {
+    headers: { "x-access-token": token },
+  }));
+  const state = await stateRes.json() as { photos: Array<{ id: string; section: string; position: number }> };
+  const byId = new Map(state.photos.map((p) => [p.id, p]));
+  expect(byId.get(ids[0])).toMatchObject({ section: "triptych", position: 0 });
+  expect(byId.get(ids[1])).toMatchObject({ section: "gallery", position: 1 });
+  expect(byId.get(ids[2])).toMatchObject({ section: "gallery", position: 0 });
+}, 90_000);
+
+test("PATCH /reorder rejects unknown id", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+  const res = await app.fetch(new Request("http://localhost:3000/api/admin/photos/reorder", {
+    method: "PATCH",
+    headers: { "content-type": "application/json", origin: "http://localhost:3000", cookie },
+    body: JSON.stringify({
+      order: [{ id: "00000000-0000-0000-0000-000000000000", section: "gallery", position: 0 }],
+    }),
+  }));
+  expect(res.status).toBe(404);
+}, 30_000);

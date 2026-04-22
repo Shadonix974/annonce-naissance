@@ -78,6 +78,33 @@ app.post("/", async (c) => {
 });
 
 app.patch(
+  "/reorder",
+  zValidator("json", z.object({
+    order: z.array(z.object({
+      id: z.string().uuid(),
+      section: z.enum(["triptych", "gallery"]),
+      position: z.number().int().min(0),
+    })).min(1),
+  })),
+  async (c) => {
+    assertSameOrigin(c);
+    const { order } = c.req.valid("json");
+
+    await db.transaction(async (tx) => {
+      for (const item of order) {
+        const [row] = await tx.update(photos)
+          .set({ section: item.section, position: item.position })
+          .where(eq(photos.id, item.id))
+          .returning({ id: photos.id });
+        if (!row) throw new NotFoundError();
+      }
+    });
+
+    return c.json({ ok: true });
+  },
+);
+
+app.patch(
   "/:id",
   zValidator("json", z.object({
     alt: z.string().max(400).optional(),
