@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { requestLogger } from "./lib/logger.js";
 import { onError } from "./middleware/error-handler.js";
+import adminAccessToken from "./routes/admin/access-token.js";
 import adminLogin from "./routes/admin/login.js";
 import adminGifts from "./routes/admin/gifts.js";
 import adminTimeline from "./routes/admin/timeline.js";
@@ -17,6 +18,7 @@ app.route("/api/admin", adminLogin);
 app.route("/api/admin/tweaks", adminTweaks);
 app.route("/api/admin/gifts", adminGifts);
 app.route("/api/admin/timeline", adminTimeline);
+app.route("/api/admin/access-token", adminAccessToken);
 app.route("/api/state", stateRoute);
 app.route("/api/gifts", giftsRoute);
 app.route("/api/stream", streamRoute);
