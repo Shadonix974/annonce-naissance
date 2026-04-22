@@ -277,6 +277,13 @@
     </div>
   </nav>
 
+  <!-- Ambient music. Drop the file at web/music.mp3 — Caddy serves it
+       at /music.mp3 and the browser preloads metadata without streaming
+       the body until the user toggles playback. -->
+  <audio id="bgMusic" preload="metadata" loop>
+    <source src="/music.mp3" type="audio/mpeg">
+  </audio>
+
   <dialog id="giftModal" class="gift-modal" aria-labelledby="giftModalTitle">
   <form method="dialog" id="giftModalForm" novalidate>
     <h3 id="giftModalTitle"></h3>

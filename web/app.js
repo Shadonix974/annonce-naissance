@@ -184,65 +184,112 @@ function openGiftModal(gift) {
   dlg.showModal();
 }
 
-/* ---------- Ambient music (Web Audio, subtle) ---------- */
-let audioCtx = null;
-let audioNodes = [];
+/* ---------- Ambient music (HTMLAudioElement, real file) ----------
+   The audio file is served at /music.mp3 (dropped into web/music.mp3).
+   The <audio> element in index.html preloads metadata only; the body
+   is streamed when the user toggles playback. Fade in/out is driven
+   by rAF on .volume for a gentle start/stop. */
+const MUSIC_TARGET_VOLUME = 0.5;
+let musicFadeRaf = 0;
+
+function fadeMusic(audio, from, to, durationMs, done) {
+  if (musicFadeRaf) cancelAnimationFrame(musicFadeRaf);
+  const start = performance.now();
+  function tick(now) {
+    const p = Math.min(1, (now - start) / durationMs);
+    audio.volume = Math.max(0, Math.min(1, from + (to - from) * p));
+    if (p < 1) musicFadeRaf = requestAnimationFrame(tick);
+    else { musicFadeRaf = 0; if (done) done(); }
+  }
+  musicFadeRaf = requestAnimationFrame(tick);
+}
 
 function startMusic() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const ctx = audioCtx;
-  if (ctx.state === 'suspended') ctx.resume();
-
-  // A gentle four-note loop reminiscent of a lullaby: D4, F#4, A4, E4
-  const notes = [293.66, 369.99, 440.00, 329.63];
-  const master = ctx.createGain();
-  master.gain.value = 0;
-  master.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 1.5);
-  master.connect(ctx.destination);
-
-  const reverb = ctx.createGain();
-  reverb.gain.value = 0.3;
-  reverb.connect(master);
-
-  const step = 1.6;
-
-  const interval = setInterval(() => {
-    if (!state.musicPlaying) { clearInterval(interval); return; }
-    const now = ctx.currentTime;
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      const t = now + i * step;
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.4, t + 0.2);
-      g.gain.exponentialRampToValueAtTime(0.001, t + step * 0.9);
-      osc.connect(g); g.connect(reverb);
-      osc.start(t);
-      osc.stop(t + step);
-    });
-  }, step * notes.length * 1000);
-
-  audioNodes.push({ master, interval });
+  const audio = document.getElementById('bgMusic');
+  if (!audio) return;
+  audio.volume = 0;
+  const p = audio.play();
+  // Autoplay policies: if the promise rejects (e.g. no user gesture, file
+  // missing), flip the state back off so the UI stays consistent.
+  if (p && typeof p.then === 'function') {
+    p.then(() => fadeMusic(audio, 0, MUSIC_TARGET_VOLUME, 1500))
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn('Music playback failed:', err);
+        state.musicPlaying = false;
+        const btn = $('#musicBtn');
+        if (btn) {
+          btn.classList.remove('playing');
+          btn.querySelector('.label').textContent = 'Musique · off';
+        }
+      });
+  } else {
+    fadeMusic(audio, 0, MUSIC_TARGET_VOLUME, 1500);
+  }
 }
 
 function stopMusic() {
-  audioNodes.forEach(({ master, interval }) => {
-    if (interval) clearInterval(interval);
-    if (master && audioCtx) {
-      master.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.8);
-    }
+  const audio = document.getElementById('bgMusic');
+  if (!audio) return;
+  fadeMusic(audio, audio.volume, 0, 800, () => {
+    audio.pause();
+    audio.currentTime = 0;
   });
-  audioNodes = [];
+}
+
+function setMusicButtonState(on) {
+  const btn = $('#musicBtn');
+  if (!btn) return;
+  btn.classList.toggle('playing', on);
+  const label = btn.querySelector('.label');
+  if (label) label.textContent = on ? 'Musique · on' : 'Musique · off';
 }
 
 function toggleMusic() {
-  const btn = $('#musicBtn');
   state.musicPlaying = !state.musicPlaying;
-  btn.classList.toggle('playing', state.musicPlaying);
-  btn.querySelector('.label').textContent = state.musicPlaying ? 'Musique · on' : 'Musique · off';
+  setMusicButtonState(state.musicPlaying);
+  // Persist across visits: once the user explicitly chose a state, future
+  // page loads honour it rather than overriding with autoplay.
+  localStorage.setItem('musicPreference', state.musicPlaying ? 'on' : 'off');
   if (state.musicPlaying) startMusic(); else stopMusic();
+}
+
+/* Autoplay is blocked on load by every major browser without a prior user
+   gesture. We try play() anyway (some contexts allow it via Media Engagement
+   Index) and, on rejection, hook a one-shot listener that starts the track
+   on the next click/tap/scroll/keydown — standard "feels like autoplay"
+   trick used on invitation/portfolio sites. */
+function attemptAutoplayMusic() {
+  // Don't autoplay inside the admin's preview iframe — annoying while editing.
+  if (window.self !== window.top) return;
+  // Respect explicit user choice from a previous session.
+  if (localStorage.getItem('musicPreference') === 'off') return;
+
+  const audio = document.getElementById('bgMusic');
+  if (!audio) return;
+
+  const begin = () => {
+    state.musicPlaying = true;
+    setMusicButtonState(true);
+    startMusic();
+  };
+
+  audio.volume = 0;
+  const p = audio.play();
+  if (p && typeof p.catch === 'function') {
+    p.then(() => fadeMusic(audio, 0, MUSIC_TARGET_VOLUME, 1500))
+      .then(() => setMusicButtonState(true))
+      .then(() => { state.musicPlaying = true; })
+      .catch(() => {
+        // Autoplay blocked — wait for the first genuine user gesture.
+        const events = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
+        const once = () => {
+          events.forEach((e) => document.removeEventListener(e, once));
+          begin();
+        };
+        events.forEach((e) => document.addEventListener(e, once, { passive: true }));
+      });
+  }
 }
 
 /* ---------- Token bootstrap ---------- */
@@ -480,6 +527,7 @@ async function init() {
   renderGifts();
   subscribeSSE(token);
   registerServiceWorker();
+  attemptAutoplayMusic();
 }
 
 document.addEventListener('DOMContentLoaded', init);
