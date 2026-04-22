@@ -1,5 +1,5 @@
 import { encode as encodeBlurhash } from "blurhash";
-import sharp from "sharp";
+import sharp, { type Sharp } from "sharp";
 
 export type VariantSize = "thumb" | "medium" | "full";
 export type VariantFormat = "avif" | "webp" | "jpg";
@@ -20,14 +20,19 @@ export interface ProcessedPhoto {
   variants: Variant[];
 }
 
-export async function processPhoto(input: Buffer): Promise<ProcessedPhoto> {
-  // rotate() applies EXIF orientation ; default sharp behaviour strips metadata.
-  const base = sharp(input).rotate();
+// Produce a canonical original: EXIF-rotated, metadata-stripped, JPEG q95.
+// Recrop will always read from this normalised form.
+export async function normaliseOriginal(input: Buffer): Promise<Buffer> {
+  return sharp(input).rotate().jpeg({ quality: 95 }).toBuffer();
+}
+
+// Generate the 9 variants + blurhash from a pre-rotated sharp instance.
+// The caller is responsible for calling .rotate() and/or .extract() beforehand.
+export async function generateVariants(base: Sharp): Promise<ProcessedPhoto> {
   const meta = await base.metadata();
   if (!meta.width || !meta.height) throw new Error("invalid image: no dimensions");
 
   const variants: Variant[] = [];
-
   const sizeList: Array<[VariantSize, number]> = [["thumb", 400], ["medium", 1200], ["full", 2000]];
   for (const [size, width] of sizeList) {
     const [avif, webp, jpg] = await Promise.all([
@@ -40,7 +45,6 @@ export async function processPhoto(input: Buffer): Promise<ProcessedPhoto> {
     variants.push({ size, format: "jpg",  buffer: jpg,  contentType: "image/jpeg" });
   }
 
-  // Blurhash from a tiny raw RGBA
   const bh = await base.clone()
     .resize({ width: 32, withoutEnlargement: false })
     .ensureAlpha()
@@ -49,4 +53,9 @@ export async function processPhoto(input: Buffer): Promise<ProcessedPhoto> {
   const blurhash = encodeBlurhash(new Uint8ClampedArray(bh.data), bh.info.width, bh.info.height, 4, 3);
 
   return { width: meta.width, height: meta.height, blurhash, variants };
+}
+
+// Upload entry-point: rotate on EXIF and generate the 9 variants + blurhash.
+export async function processPhoto(input: Buffer): Promise<ProcessedPhoto> {
+  return generateVariants(sharp(input).rotate());
 }
