@@ -3,6 +3,10 @@ import { RateLimitError } from "./errors.js";
 type Bucket = { tokens: number; updatedAt: number };
 const buckets = new Map<string, Bucket>();
 
+export function resetBuckets(): void {
+  buckets.clear();
+}
+
 export function rateLimit(key: string, capacity: number, windowMs: number): void {
   const now = Date.now();
   const b = buckets.get(key);

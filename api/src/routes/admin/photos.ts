@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto";
+import { Readable } from "node:stream";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
+import { stream } from "hono/streaming";
 import { zValidator } from "../../lib/validate.js";
 import { z } from "zod";
 import { db, schema } from "../../db/client.js";
 import { NotFoundError, ValidationError } from "../../lib/errors.js";
-import { objectKey, originalKey, putBuffer, removePrefix } from "../../lib/minio.js";
+import { getReadStream, objectKey, originalKey, putBuffer, removePrefix } from "../../lib/minio.js";
 import { normaliseOriginal, processPhoto } from "../../lib/sharp-pipeline.js";
 import { assertSameOrigin } from "../../lib/origin-check.js";
 import { requireAdmin } from "../../middleware/require-admin.js";
@@ -102,6 +104,26 @@ app.delete("/:id", async (c) => {
   if (!row) throw new NotFoundError();
   await removePrefix(`photos/${id}/`);
   return c.json({ ok: true });
+});
+
+app.get("/:id/original", async (c) => {
+  const id = c.req.param("id");
+  const [row] = await db.select().from(photos).where(eq(photos.id, id));
+  if (!row) throw new NotFoundError();
+
+  let nodeStream: NodeJS.ReadableStream;
+  try {
+    nodeStream = await getReadStream(originalKey(id));
+  } catch {
+    throw new NotFoundError();
+  }
+
+  c.header("Content-Type", "image/jpeg");
+  c.header("Cache-Control", "no-store");
+  return stream(c, async (s) => {
+    const webStream = Readable.toWeb(nodeStream as Readable) as unknown as ReadableStream<Uint8Array>;
+    await s.pipe(webStream);
+  });
 });
 
 export default app;

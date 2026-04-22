@@ -5,6 +5,7 @@ import { buildApp, resetDb } from "./helpers.js";
 import { runSeeds } from "../src/db/seeds.js";
 import { getAccessToken } from "../src/lib/access-token.js";
 import { BUCKET, minio } from "../src/lib/minio.js";
+import { resetBuckets } from "../src/lib/rate-limit.js";
 
 const ADMIN_PW = "photo-pw";
 
@@ -43,6 +44,7 @@ function uploadReq(cookie: string, body: FormData): Request {
 beforeEach(async () => {
   await resetDb();
   await runSeeds();
+  resetBuckets();
   process.env.ADMIN_PASSWORD_HASH = await argon2.hash(ADMIN_PW, { type: argon2.argon2id });
   // Also wipe any test-leftover objects from previous runs
   const keys: string[] = [];
@@ -263,3 +265,40 @@ test("upload with cropped=1 flag persists cropped column", async () => {
   expect(photo.cropped).toBe(true);
   expect(photo.version).toBe(1);
 }, 60_000);
+
+test("GET /api/admin/photos/:id/original requires admin", async () => {
+  const app = await buildApp();
+  const res = await app.fetch(new Request("http://localhost:3000/api/admin/photos/00000000-0000-0000-0000-000000000000/original"));
+  expect(res.status).toBe(401);
+}, 30_000);
+
+test("GET /api/admin/photos/:id/original returns the original JPEG for an admin", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+  const fd = new FormData();
+  fd.append("file", new Blob([await makePng(200, 150)], { type: "image/png" }), "x.png");
+  fd.append("section", "gallery");
+  fd.append("alt", "original fetch");
+  const up = await app.fetch(uploadReq(cookie, fd));
+  const photo = await up.json() as { id: string };
+
+  const res = await app.fetch(new Request(`http://localhost:3000/api/admin/photos/${photo.id}/original`, {
+    headers: { cookie },
+  }));
+  expect(res.status).toBe(200);
+  expect(res.headers.get("content-type")).toBe("image/jpeg");
+  const body = Buffer.from(await res.arrayBuffer());
+  const meta = await sharp(body).metadata();
+  expect(meta.format).toBe("jpeg");
+  expect(meta.width).toBe(200);
+  expect(meta.height).toBe(150);
+}, 60_000);
+
+test("GET /api/admin/photos/:id/original returns 404 for unknown photo", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+  const res = await app.fetch(new Request("http://localhost:3000/api/admin/photos/00000000-0000-0000-0000-000000000000/original", {
+    headers: { cookie },
+  }));
+  expect(res.status).toBe(404);
+}, 30_000);
