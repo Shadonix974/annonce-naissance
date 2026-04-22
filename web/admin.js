@@ -10,6 +10,43 @@ const API = {
   async me() { const r = await fetch('/api/admin/me'); return r.ok; },
 };
 
+const TWEAK_LABELS = {
+  babyName: "Prénom",
+  babyMiddle: "Second prénom",
+  dateLong: "Date (long)",
+  dateShort: "Date (court)",
+  timeBirth: "Heure",
+  weight: "Poids (kg)",
+  height: "Taille (cm)",
+  city: "Ville",
+  maternity: "Maternité",
+  father: "Père",
+  mother: "Mère",
+  paternalGP: "Grands-parents paternels",
+  maternalGP: "Grands-parents maternels",
+};
+const ACCENT_COLORS = { gold: "#c9a66b", sage: "#8cae95", rose: "#d79898", azure: "#8fb0d9" };
+
+async function loadState() {
+  const r = await fetch('/api/state', { headers: { 'X-Access-Token': CURRENT_TOKEN } });
+  return r.json();
+}
+
+const debounceTimers = new Map();
+function patchTweak(key, value) {
+  clearTimeout(debounceTimers.get(key));
+  debounceTimers.set(key, setTimeout(async () => {
+    await fetch('/api/admin/tweaks', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ [key]: value }),
+    });
+    document.getElementById('previewFrame').contentWindow.postMessage(
+      { type: '__edit_mode_set_keys', edits: { [key]: value } }, '*',
+    );
+  }, 500));
+}
+
 function show(id, on = true) { document.getElementById(id).hidden = !on; }
 function $(sel) { return document.querySelector(sel); }
 
@@ -71,7 +108,50 @@ function setPreviewSrc() {
 }
 
 // Stubs — filled by Tasks 36-39
-async function renderTweaksTab()   { $('#tab-tweaks').innerHTML = '<p>… Task 36</p>'; }
+async function renderTweaksTab() {
+  const tab = $('#tab-tweaks');
+  tab.innerHTML = '';
+  const data = await loadState();
+
+  for (const [key, label] of Object.entries(TWEAK_LABELS)) {
+    const group = document.createElement('label');
+    const input = document.createElement('input');
+    input.dataset.key = key;
+    input.value = data.tweaks[key] ?? '';
+    group.textContent = label + ' ';
+    group.appendChild(input);
+    tab.appendChild(group);
+  }
+
+  // Accent swatches
+  const accent = document.createElement('div');
+  const title = document.createElement('div');
+  title.className = 'section-title';
+  title.textContent = 'Accent';
+  accent.appendChild(title);
+  const swatches = document.createElement('div');
+  swatches.className = 'swatches';
+  for (const [key, col] of Object.entries(ACCENT_COLORS)) {
+    const sw = document.createElement('div');
+    sw.className = 'swatch' + (data.tweaks.accent === key ? ' active' : '');
+    sw.style.background = col;
+    sw.dataset.accent = key;
+    sw.title = key;
+    sw.addEventListener('click', () => {
+      swatches.querySelectorAll('.swatch').forEach((s) => s.classList.toggle('active', s === sw));
+      patchTweak('accent', key);
+    });
+    swatches.appendChild(sw);
+  }
+  accent.appendChild(swatches);
+  tab.appendChild(accent);
+
+  tab.addEventListener('input', (e) => {
+    const target = e.target;
+    const key = target && target.dataset && target.dataset.key;
+    if (key) patchTweak(key, target.value);
+  });
+}
 async function renderPhotosTab()   { $('#tab-photos').innerHTML = '<p>… Task 37</p>'; }
 async function renderGiftsTab()    { $('#tab-gifts').innerHTML = '<p>… Task 38</p>'; }
 async function renderTimelineTab() { $('#tab-timeline').innerHTML = '<p>… Task 38</p>'; }
