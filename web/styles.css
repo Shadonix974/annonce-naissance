@@ -882,8 +882,8 @@ body {
 }
 .gift-modal::backdrop { background: rgba(10,12,20,.75); }
 .gift-modal h3 { font-weight: 300; font-size: 28px; }
-.gift-modal-range { color: var(--gold); font-size: 13px; letter-spacing: .2em; margin: 6px 0 18px; text-transform: uppercase; }
-.gift-modal label { display:block; font-size: 13px; opacity:.8; margin-top: 16px; }
+.gift-modal-range { color: var(--gold); font-size: 14px; letter-spacing: .2em; margin: 6px 0 18px; text-transform: uppercase; }
+.gift-modal label { display:block; font-size: 15px; opacity:.85; margin-top: 16px; }
 .gift-modal input, .gift-modal textarea {
   background: transparent;
   border: 0;
@@ -912,11 +912,11 @@ body {
 .gift-modal-actions { display:flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
 .gift-modal-actions button {
   background: transparent; color: var(--cream); border: 1px solid oklch(0.96 0.015 85 / 0.3);
-  padding: 10px 16px; font-family: var(--serif); font-size: 14px; cursor: pointer; border-radius: 2px;
+  padding: 10px 18px; font-family: var(--serif); font-size: 16px; cursor: pointer; border-radius: 2px;
 }
 .gift-modal-actions button.primary { background: var(--gold); color: var(--ink); border-color: var(--gold); }
 .gift-modal-actions button[disabled] { opacity:.4; cursor: not-allowed; }
-.gift-modal-error { color: oklch(0.76 0.1 25); font-style: italic; margin-top: 16px; font-size: 13px; }
+.gift-modal-error { color: oklch(0.76 0.1 25); font-style: italic; margin-top: 16px; font-size: 14px; }
 
 /* ============================================================
    Mobile — vertical feed (M2)
