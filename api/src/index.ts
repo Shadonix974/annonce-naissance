@@ -3,8 +3,10 @@ import { Hono } from "hono";
 import { env } from "./env.js";
 import { runMigrations } from "./db/migrate.js";
 import { runSeeds } from "./db/seeds.js";
+import { onError } from "./middleware/error-handler.js";
 
 const app = new Hono();
+app.onError(onError);
 app.get("/healthz", (c) => c.json({ ok: true }));
 
 async function main(): Promise<void> {
