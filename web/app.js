@@ -300,7 +300,45 @@ function renderPhotos() {
     }
   }
 }
-function subscribeSSE()  { /* implemented in Task 31 */ }
+function subscribeSSE(token) {
+  const es = new EventSource(`/api/stream?k=${encodeURIComponent(token)}`);
+  es.addEventListener('gift.reserved',   (e) => applyGiftPatch(JSON.parse(e.data)));
+  es.addEventListener('gift.unreserved', (e) => applyGiftPatch(JSON.parse(e.data)));
+  es.addEventListener('gift.created',    (e) => applyGiftCreated(JSON.parse(e.data).gift));
+  es.addEventListener('gift.updated',    (e) => applyGiftCreated(JSON.parse(e.data).gift));
+  es.addEventListener('gift.deleted',    (e) => applyGiftDeleted(JSON.parse(e.data).id));
+  // `ping` events are silently ignored (no listener registered).
+}
+
+function applyGiftPatch(evt) {
+  const g = state.gifts.find((x) => x.id === evt.id);
+  if (!g) return;
+  if (evt.type === 'gift.reserved') {
+    g.takenBy = evt.taken_by;
+    g.takenNote = evt.taken_note;
+    g.takenAt = evt.taken_at;
+  } else {
+    g.takenBy = null;
+    g.takenNote = null;
+    g.takenAt = null;
+  }
+  renderGifts();
+}
+
+function applyGiftCreated(gift) {
+  const idx = state.gifts.findIndex((x) => x.id === gift.id);
+  if (idx >= 0) state.gifts[idx] = gift; else state.gifts.push(gift);
+  state.gifts.sort((a, b) => a.position - b.position);
+  renderGifts();
+}
+
+function applyGiftDeleted(id) {
+  state.gifts = state.gifts.filter((x) => x.id !== id);
+  state.reservedGiftIds.delete(id);
+  localStorage.setItem('reservedGiftIds', JSON.stringify([...state.reservedGiftIds]));
+  renderGifts();
+}
+
 function registerServiceWorker() { /* implemented in Task 34 */ }
 
 /* ---------- Edit mode integration ---------- */
