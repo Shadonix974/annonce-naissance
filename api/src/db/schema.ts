@@ -30,6 +30,8 @@ export const photos = pgTable(
     width: integer("width").notNull(),
     height: integer("height").notNull(),
     blurhash: text("blurhash"),
+    version: integer("version").notNull().default(1),
+    cropped: boolean("cropped").notNull().default(false),
     uploadedAt: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
