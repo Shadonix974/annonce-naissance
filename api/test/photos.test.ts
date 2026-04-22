@@ -3,6 +3,7 @@ import sharp from "sharp";
 import { beforeEach, expect, test } from "vitest";
 import { buildApp, resetDb } from "./helpers.js";
 import { runSeeds } from "../src/db/seeds.js";
+import { getAccessToken } from "../src/lib/access-token.js";
 import { BUCKET, minio } from "../src/lib/minio.js";
 
 const ADMIN_PW = "photo-pw";
@@ -158,4 +159,41 @@ test("uploaded variants strip EXIF metadata", async () => {
   const meta = await sharp(variantBuf).metadata();
   // sharp's default behaviour strips EXIF unless withMetadata() was called.
   expect(meta.exif).toBeUndefined();
+}, 60_000);
+
+test("GET /photos/unknown/thumb.avif returns 404", async () => {
+  const token = (await getAccessToken())!;
+  const app = await buildApp();
+  const res = await app.fetch(new Request("http://x/photos/00000000-0000-0000-0000-000000000000/thumb.avif", {
+    headers: { "x-access-token": token },
+  }));
+  expect(res.status).toBe(404);
+}, 30_000);
+
+test("GET /photos without token returns 404", async () => {
+  const app = await buildApp();
+  const res = await app.fetch(new Request("http://x/photos/00000000-0000-0000-0000-000000000000/thumb.avif"));
+  expect(res.status).toBe(404);
+}, 30_000);
+
+test("GET /photos/:id/thumb.avif after upload returns 200 with correct content-type", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+  const fd = new FormData();
+  fd.append("file", new Blob([await makePng(300, 200)], { type: "image/png" }), "x.png");
+  fd.append("section", "triptych");
+  fd.append("alt", "test");
+  const up = await app.fetch(uploadReq(cookie, fd));
+  expect(up.status).toBe(201);
+  const photo = await up.json() as { id: string };
+
+  const token = (await getAccessToken())!;
+  const res = await app.fetch(new Request(`http://x/photos/${photo.id}/thumb.avif`, {
+    headers: { "x-access-token": token },
+  }));
+  expect(res.status).toBe(200);
+  expect(res.headers.get("content-type")).toBe("image/avif");
+  expect(res.headers.get("cache-control")).toMatch(/immutable/);
+  const body = await res.arrayBuffer();
+  expect(body.byteLength).toBeGreaterThan(0);
 }, 60_000);
