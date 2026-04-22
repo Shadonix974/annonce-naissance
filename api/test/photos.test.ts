@@ -90,6 +90,18 @@ test("upload rejects bad section", async () => {
   expect(await res.json()).toMatchObject({ error: "bad_section" });
 }, 30_000);
 
+test("upload rejects empty alt (server-side a11y guard)", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+  const fd = new FormData();
+  fd.append("file", new Blob([await makePng()], { type: "image/png" }), "x.png");
+  fd.append("section", "triptych");
+  fd.append("alt", "   "); // whitespace-only
+  const res = await app.fetch(uploadReq(cookie, fd));
+  expect(res.status).toBe(400);
+  expect(await res.json()).toMatchObject({ error: "alt_required" });
+}, 30_000);
+
 test("upload happy path creates row and 9 MinIO objects", async () => {
   const app = await buildApp();
   const cookie = await adminCookie(app);

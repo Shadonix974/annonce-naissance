@@ -11,8 +11,9 @@ const { tweaks } = schema;
 const Body = z.record(z.string().min(1).max(128), z.string().max(4096));
 
 const app = new Hono();
+app.use("*", requireAdmin);
 
-app.patch("/", requireAdmin, zValidator("json", Body), async (c) => {
+app.patch("/", zValidator("json", Body), async (c) => {
   assertSameOrigin(c);
   const patch = c.req.valid("json");
   const entries = Object.entries(patch);

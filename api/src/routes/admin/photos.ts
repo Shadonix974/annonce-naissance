@@ -32,6 +32,7 @@ app.post("/", async (c) => {
   if (!ACCEPTED_MIME.has(file.type)) throw new ValidationError("unsupported_type");
   if (file.size > MAX_BYTES) throw new ValidationError("file_too_large");
   if (!["triptych", "gallery"].includes(section)) throw new ValidationError("bad_section");
+  if (!alt.trim()) throw new ValidationError("alt_required");
 
   const buf = Buffer.from(await file.arrayBuffer());
   const processed = await processPhoto(buf);
