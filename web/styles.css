@@ -371,6 +371,10 @@ body {
   font-style: italic;
   text-wrap: balance;
 }
+/* Preserve user-entered line breaks when parentsNote comes from the admin
+   textarea; single-paragraph prose still renders fine (lone \n collapse to
+   a single space is the pre-line default). */
+.parents-note { white-space: pre-line; }
 .words-wrap .signed {
   margin-top: 36px;
   font-family: var(--script);
