@@ -14,6 +14,11 @@ export async function renderPrintPdf(url: string, format: PrintFormat): Promise<
   try {
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
+    // Playwright's page.pdf() defaults to emulating "print" media, which would
+    // apply our @media print rules (strips rotation/shadow/washi tape). The
+    // admin wants the PDF to match what recipients see on screen, so we
+    // explicitly emulate the screen media.
+    await page.emulateMedia({ media: "screen" });
     await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
     // A beat to let fonts load and images decode before we snapshot.
     await page.waitForTimeout(500);

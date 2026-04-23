@@ -68,8 +68,8 @@ async function init() {
 
   applyTweaks(data.tweaks);
   applyCover(data.cover, token);
-
-  $('#printBtn').addEventListener('click', () => window.print());
+  // The public /print page is view-only — the PDF is generated on the admin
+  // side via /api/admin/print/pdf, not from a client-side window.print() here.
 }
 
 document.addEventListener('DOMContentLoaded', init);
