@@ -7,47 +7,43 @@
   <title>Faire-part de naissance</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Italianno&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Italianno&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/print.css">
 </head>
 <body>
-  <main class="sheet" id="sheet">
-    <div class="cover-frame">
-      <img class="cover-photo" id="coverPhoto" alt="" data-hidden>
-      <div class="cover-fallback" id="coverFallback">Photo de faire-part</div>
-    </div>
+  <main class="sheet">
+    <article class="polaroid">
+      <div class="tape no-print" aria-hidden="true"></div>
 
-    <div class="credits">
-      <div class="overline">Nous vous présentons</div>
-      <h1 class="name">
-        <span data-t="babyName">Léonard</span>
-        <span class="middle" data-t="babyMiddle">Augustin</span>
-      </h1>
-
-      <div class="date-time">
-        <span data-t="dateLong">14 avril 2026</span>
-        <span class="sep">·</span>
-        <span data-t="timeBirth">04h27</span>
+      <div class="photo">
+        <img class="cover-photo" id="coverPhoto" alt="" data-hidden>
+        <div class="cover-fallback" id="coverFallback">— photo à venir —</div>
       </div>
 
-      <div class="metrics">
-        <span><span data-t="weight">3,42</span>&nbsp;kg</span>
-        <span class="sep">·</span>
-        <span><span data-t="height">51</span>&nbsp;cm</span>
-      </div>
+      <div class="caption">
+        <div class="welcome">bienvenue à</div>
 
-      <div class="place">
-        né à <span data-t="city">Paris</span>, <span data-t="maternity">Maternité des Lilas</span>
-      </div>
+        <h1 class="name" data-t="babyName">Léonard</h1>
+        <div class="middle-name" data-t="babyMiddle">Augustin</div>
 
-      <hr class="rule">
+        <div class="divider" aria-hidden="true">· · ·</div>
 
-      <div class="parents">
-        <span data-t="mother">Camille</span>
-        <span class="amp">&amp;</span>
-        <span data-t="father">Julien</span>
+        <div class="meta">
+          <span data-t="dateLong">14 avril 2026</span><span class="dot">·</span><span data-t="timeBirth">04h27</span>
+        </div>
+        <div class="meta">
+          <span data-t="weight">3,42</span>&nbsp;kg<span class="dot">·</span><span data-t="height">51</span>&nbsp;cm
+        </div>
+
+        <div class="place">
+          <span data-t="city">Paris</span><span class="sep">✦</span><span data-t="maternity">Maternité des Lilas</span>
+        </div>
+
+        <div class="parents">
+          <span data-t="mother">Camille</span><span class="amp">&amp;</span><span data-t="father">Julien</span>
+        </div>
       </div>
-    </div>
+    </article>
   </main>
 
   <aside class="no-print print-actions">

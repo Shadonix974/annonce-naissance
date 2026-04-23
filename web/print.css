@@ -1,55 +1,102 @@
 /* ============================================================
-   Print page — styled for both A4 (210×297mm) and Letter
-   (216×279mm). Relative sizing keeps both formats readable.
+   Print page — Polaroid-on-paper design.
+   Screen: warm paper background + slightly-rotated polaroid card
+   with soft shadow + washi-tape accent. Print: flattens the
+   rotation/shadow/tape so it can be cut and glued cleanly.
+   Fits both A4 and Letter via relative units + @page.
    ============================================================ */
 
 :root {
-  --ink: #1a1a1a;
-  --cream: #fdfbf5;
+  --ink: #2a251e;
+  --paper: #ebe1cc;
+  --card: #fdfaf1;
   --gold: #b08a4b;
-  --muted: #7a6f5e;
+  --gold-soft: #d4b77e;
+  --muted: #8a8275;
   --serif: 'Cormorant Garamond', serif;
   --script: 'Italianno', cursive;
+  --mono: 'JetBrains Mono', monospace;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
-  background: var(--cream);
+  background: var(--paper);
   color: var(--ink);
   font-family: var(--serif);
   font-weight: 300;
   min-height: 100vh;
+  /* Soft warm paper texture via layered gradients (no image assets) */
+  background-image:
+    radial-gradient(ellipse at 18% 12%, rgba(255, 248, 232, 0.6), transparent 55%),
+    radial-gradient(ellipse at 82% 88%, rgba(160, 130, 80, 0.08), transparent 60%),
+    radial-gradient(ellipse at 50% 50%, rgba(255, 250, 240, 0.2), transparent 80%);
 }
 
 .sheet {
-  max-width: 160mm;
-  margin: 20mm auto;
-  padding: 24mm 18mm;
-  background: var(--cream);
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 18mm;
-  align-items: center;
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 48px 24px;
 }
 
-.cover-frame {
+/* ============================================================
+   The polaroid itself
+   ============================================================ */
+.polaroid {
+  position: relative;
+  background: var(--card);
+  padding: 18px 18px 42px;
+  max-width: 440px;
   width: 100%;
-  aspect-ratio: 4 / 5;
-  max-height: 150mm;
-  background: oklch(0.9 0.01 85);
-  border: 1px solid oklch(0.82 0.02 80);
+  transform: rotate(-1.6deg);
+  border-radius: 1px;
+  /* Two-layer soft shadow — feels like a print resting on paper */
+  box-shadow:
+    0 2px 2px rgba(60, 45, 20, 0.08),
+    0 24px 60px rgba(60, 45, 20, 0.22),
+    0 6px 14px rgba(60, 45, 20, 0.1);
+}
+
+/* Washi tape at the top — on-screen decorative, hidden on print */
+.polaroid .tape {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 130px;
+  height: 26px;
+  transform: translateX(-50%) rotate(-2.2deg);
+  background: linear-gradient(
+    135deg,
+    rgba(212, 183, 126, 0.78) 0%,
+    rgba(232, 205, 150, 0.58) 50%,
+    rgba(212, 183, 126, 0.78) 100%
+  );
+  border-left: 1px dashed rgba(255, 255, 255, 0.4);
+  border-right: 1px dashed rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 6px rgba(60, 45, 20, 0.12);
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* ============================================================
+   Photo frame (square, inside the white mat)
+   ============================================================ */
+.polaroid .photo {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #0a0a0a;
   overflow: hidden;
   position: relative;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
 }
-.cover-photo {
+.polaroid .photo img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
-.cover-photo[data-hidden] { display: none; }
+.polaroid .photo img[data-hidden] { display: none; }
 .cover-fallback {
   position: absolute;
   inset: 0;
@@ -57,104 +104,172 @@ html, body {
   place-items: center;
   font-family: var(--serif);
   font-style: italic;
-  color: var(--muted);
-  font-size: 16px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13px;
+  letter-spacing: 0.15em;
 }
-.cover-photo:not([data-hidden]) + .cover-fallback { display: none; }
+.polaroid .photo img:not([data-hidden]) + .cover-fallback { display: none; }
 
-.credits { width: 100%; }
+/* ============================================================
+   Caption under the photo — handwritten/elegant feel
+   ============================================================ */
+.polaroid .caption {
+  text-align: center;
+  padding: 22px 12px 2px;
+}
 
-.overline {
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: 14pt;
+.welcome {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: 6mm;
+  margin-bottom: 14px;
 }
 
 .name {
-  font-weight: 400;
-  font-size: 36pt;
-  line-height: 1.05;
-  letter-spacing: 0.02em;
-  margin-bottom: 4mm;
-  display: flex;
-  flex-direction: column;
-  gap: 2mm;
-}
-.name .middle {
   font-family: var(--script);
-  font-size: 42pt;
   font-weight: 400;
-  color: var(--gold);
-  line-height: 0.9;
+  font-size: 80px;
+  line-height: 0.88;
+  color: var(--ink);
+  letter-spacing: 0.01em;
 }
 
-.date-time, .metrics, .place {
-  font-size: 13pt;
-  color: var(--ink);
-  margin-top: 3mm;
+.middle-name {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 20px;
+  color: var(--gold);
+  margin-top: 4px;
   letter-spacing: 0.04em;
 }
-.date-time .sep, .metrics .sep { margin: 0 8px; color: var(--gold); }
-.place { font-style: italic; color: var(--muted); }
 
-.rule {
-  width: 40mm;
-  margin: 10mm auto;
-  border: 0;
-  border-top: 1px solid var(--gold);
-  opacity: 0.6;
+.divider {
+  color: var(--gold);
+  font-size: 12px;
+  letter-spacing: 0.6em;
+  margin: 18px 0 14px;
+}
+
+.meta {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink);
+  line-height: 1.7;
+}
+.meta .dot {
+  color: var(--gold);
+  margin: 0 10px;
+  font-style: normal;
+}
+
+.place {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.place .sep {
+  color: var(--gold);
+  margin: 0 6px;
+  font-size: 10px;
+  vertical-align: middle;
 }
 
 .parents {
   font-family: var(--script);
-  font-size: 40pt;
+  font-size: 38px;
   color: var(--gold);
-  line-height: 1.05;
+  margin-top: 20px;
+  line-height: 1;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 10px;
 }
-.parents .amp { margin: 0 8px; }
+.parents .amp {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 22px;
+  color: var(--ink);
+  align-self: center;
+}
 
+/* ============================================================
+   Floating "Imprimer" button — on-screen only
+   ============================================================ */
 .print-actions {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  bottom: 22px;
+  right: 22px;
   z-index: 100;
 }
 .print-actions button {
   padding: 12px 20px;
   background: var(--ink);
-  color: var(--cream);
+  color: var(--card);
   border: 0;
   font-family: var(--serif);
   font-size: 14pt;
   cursor: pointer;
   border-radius: 2px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+}
+.print-actions button:hover { background: #1a1612; }
+
+/* ============================================================
+   Print — flatten rotation/shadow/tape, keep the design.
+   Works for both A4 (210×297mm) and Letter (216×279mm).
+   ============================================================ */
+@page { margin: 12mm; }
+
+@media print {
+  html, body {
+    background: #fff;
+    background-image: none;
+  }
+  .no-print { display: none !important; }
+  .sheet {
+    padding: 0;
+    min-height: auto;
+  }
+  .polaroid {
+    transform: none;
+    box-shadow: none;
+    max-width: none;
+    width: auto;
+    margin: 0 auto;
+    padding: 14mm 14mm 20mm;
+    background: #fdfaf1;
+  }
+  .polaroid .photo {
+    box-shadow: none;
+    max-height: 140mm;
+  }
+  .name { font-size: 90pt; }
+  .middle-name { font-size: 22pt; margin-top: 6pt; }
+  .divider { font-size: 12pt; margin: 14pt 0 10pt; }
+  .meta { font-size: 14pt; line-height: 1.6; }
+  .place { font-size: 12pt; margin-top: 8pt; }
+  .parents { font-size: 42pt; margin-top: 22pt; }
+  .parents .amp { font-size: 22pt; }
+  .welcome { font-size: 9pt; }
 }
 
 /* ============================================================
-   Print styles — hide UI, fit one page, let the browser use the
-   paper size it's configured for (A4 or Letter; both work).
+   Narrow viewport — phone previewing the page
    ============================================================ */
-@page {
-  margin: 0;
-}
-@media print {
-  html, body { background: #fff; }
-  .no-print { display: none !important; }
-  .sheet {
-    margin: 0 auto;
-    padding: 18mm 16mm;
-    max-width: none;
-    max-height: 100vh;
-  }
-  .cover-frame { max-height: 120mm; }
-}
-
-/* Narrow viewport fallback (admin previewing the page at small width) */
 @media (max-width: 600px) {
-  .sheet { padding: 16mm 10mm; gap: 12mm; }
-  .name { font-size: 30pt; }
-  .name .middle { font-size: 34pt; }
-  .parents { font-size: 32pt; }
+  .sheet { padding: 24px 16px; }
+  .polaroid {
+    max-width: 100%;
+    padding: 14px 14px 30px;
+    transform: rotate(-1deg);
+  }
+  .name { font-size: 60px; }
+  .middle-name { font-size: 17px; }
+  .parents { font-size: 30px; }
 }
