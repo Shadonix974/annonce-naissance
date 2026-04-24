@@ -25,7 +25,15 @@ COPY --from=build /app/package.json ./
 # packages Chromium needs (libnss3, libatk-bridge2.0-0, fonts, etc.).
 # This adds ~400 MB but is required by the server-side PDF generator at
 # /api/admin/print/pdf.
+#
+# PLAYWRIGHT_BROWSERS_PATH=/ms-playwright forces the binaries into a
+# system-wide path rather than root's ~/.cache — otherwise the runtime
+# USER node cannot find them (Playwright defaults to $HOME/.cache/ms-playwright).
+# The env var persists to runtime via ENV, so Playwright at request time
+# looks in the same place as the build dropped them.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN npx playwright install --with-deps chromium \
+    && chmod -R a+rX /ms-playwright \
     && rm -rf /var/lib/apt/lists/*
 
 USER node
