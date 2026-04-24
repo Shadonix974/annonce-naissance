@@ -15,6 +15,11 @@ const Env = z.object({
   MINIO_SECRET_KEY: z.string().min(1),
 
   PUBLIC_ORIGIN: z.string().url(),
+
+  // Where Playwright (running inside the api container) fetches the print page
+  // when generating a PDF. Dev: http://caddy:8080 via docker DNS. Prod: the
+  // public origin served over HTTPS.
+  PRINT_BASE_URL: z.string().url().default("http://caddy:8080"),
 });
 
 export type Env = z.infer<typeof Env>;

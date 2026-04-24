@@ -95,6 +95,7 @@ const RATIOS_BY_SECTION = {
     { label: '3:4',  value: 3 / 4 },
     { label: '16:9', value: 16 / 9 },
   ],
+  'print-cover': [{ label: '4:5', value: 4 / 5 }],
 };
 
 async function openCropModal({ source, section, initialAlt = '', queueHint = '' }) {
@@ -364,6 +365,7 @@ function setupTabs() {
     gifts: renderGiftsTab,
     timeline: renderTimelineTab,
     link: renderLinkTab,
+    print: renderPrintTab,
     security: renderSecurityTab,
   };
   const shown = new Set();
@@ -466,6 +468,7 @@ async function renderPhotosTab() {
         <select id="photoDefaultSection">
           <option value="gallery">Galerie (scène 07)</option>
           <option value="triptych">Triptyque (scène 03)</option>
+          <option value="print-cover">Cover d'impression (page print)</option>
         </select>
       </label>
     </div>
@@ -473,6 +476,8 @@ async function renderPhotosTab() {
     <div id="photosGridTriptych" class="photos-grid"></div>
     <div class="section-title" style="margin-top:16px;">Galerie</div>
     <div id="photosGridGallery" class="photos-grid"></div>
+    <div class="section-title" style="margin-top:16px;">Cover impression</div>
+    <div id="photosGridPrintCover" class="photos-grid"></div>
   `;
 
   const dz = document.getElementById('photoDropzone');
@@ -536,6 +541,7 @@ async function refreshPhotoGrid() {
   const grids = [
     { id: 'photosGridTriptych', section: 'triptych' },
     { id: 'photosGridGallery',  section: 'gallery'  },
+    { id: 'photosGridPrintCover', section: 'print-cover' },
   ];
   for (const { id, section } of grids) {
     const el = document.getElementById(id);
@@ -653,6 +659,7 @@ async function persistOrder() {
   for (const { id, section } of [
     { id: 'photosGridTriptych', section: 'triptych' },
     { id: 'photosGridGallery',  section: 'gallery'  },
+    { id: 'photosGridPrintCover', section: 'print-cover' },
   ]) {
     const el = document.getElementById(id);
     if (!el) continue;
@@ -929,6 +936,121 @@ async function renderLinkTab() {
   item.appendChild(warning);
 
   tab.appendChild(item);
+}
+async function renderPrintTab() {
+  const tab = $('#tab-print');
+  const r = await fetch('/api/admin/print/link');
+  const j = await r.json();
+
+  tab.innerHTML = '';
+  const title = document.createElement('div');
+  title.className = 'section-title';
+  title.textContent = 'Lien print (faire-part imprimable)';
+  tab.appendChild(title);
+
+  const item = document.createElement('div');
+  item.className = 'item';
+  const linkInput = document.createElement('input');
+  linkInput.readOnly = true;
+  linkInput.value = j.link;
+  item.appendChild(linkInput);
+
+  const actions = document.createElement('div');
+  actions.style.marginTop = '8px';
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'secondary';
+  copyBtn.textContent = 'Copier';
+  copyBtn.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(linkInput.value);
+    copyBtn.textContent = 'Copié ✓';
+    setTimeout(() => { copyBtn.textContent = 'Copier'; }, 1500);
+  });
+
+  const rotateBtn = document.createElement('button');
+  rotateBtn.className = 'danger';
+  rotateBtn.textContent = 'Régénérer';
+  rotateBtn.style.marginLeft = '8px';
+  rotateBtn.addEventListener('click', async () => {
+    if (!confirm('Régénérer le lien print ? Les anciens liens ne fonctionneront plus.')) return;
+    const r2 = await fetch('/api/admin/print/rotate', { method: 'POST' });
+    const j2 = await r2.json();
+    linkInput.value = j2.link;
+  });
+
+  actions.appendChild(copyBtn);
+  actions.appendChild(rotateBtn);
+  item.appendChild(actions);
+
+  const note = document.createElement('p');
+  note.style.marginTop = '12px';
+  note.style.fontSize = '13px';
+  note.style.color = 'var(--muted)';
+  note.textContent = 'Ce lien donne accès UNIQUEMENT à la page imprimable (photo + infos essentielles). Indépendant du lien privé principal.';
+  item.appendChild(note);
+
+  tab.appendChild(item);
+
+  // PDF download
+  const pdfTitle = document.createElement('div');
+  pdfTitle.className = 'section-title';
+  pdfTitle.textContent = 'Télécharger en PDF';
+  tab.appendChild(pdfTitle);
+
+  const pdfItem = document.createElement('div');
+  pdfItem.className = 'item';
+  const pdfActions = document.createElement('div');
+
+  const a4Btn = document.createElement('button');
+  a4Btn.textContent = 'Télécharger PDF A4';
+  a4Btn.addEventListener('click', () => downloadPdf('a4', a4Btn));
+
+  const letterBtn = document.createElement('button');
+  letterBtn.className = 'secondary';
+  letterBtn.textContent = 'Télécharger PDF Letter';
+  letterBtn.style.marginLeft = '8px';
+  letterBtn.addEventListener('click', () => downloadPdf('letter', letterBtn));
+
+  pdfActions.appendChild(a4Btn);
+  pdfActions.appendChild(letterBtn);
+  pdfItem.appendChild(pdfActions);
+
+  const pdfNote = document.createElement('p');
+  pdfNote.style.marginTop = '12px';
+  pdfNote.style.fontSize = '13px';
+  pdfNote.style.color = 'var(--muted)';
+  pdfNote.textContent = 'Génération côté serveur via Chromium headless. ~3 secondes.';
+  pdfItem.appendChild(pdfNote);
+
+  tab.appendChild(pdfItem);
+}
+
+async function downloadPdf(format, btn) {
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Génération…';
+  try {
+    const r = await fetch(`/api/admin/print/pdf?format=${format}`);
+    if (!r.ok) {
+      btn.textContent = `Erreur ${r.status}`;
+      setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
+      return;
+    }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `annonce-naissance-${format}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    btn.textContent = 'Téléchargé ✓';
+    setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 1500);
+  } catch (err) {
+    btn.textContent = 'Erreur';
+    setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
+  }
 }
 async function renderSecurityTab() {
   const tab = $('#tab-security');

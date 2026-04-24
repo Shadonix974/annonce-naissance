@@ -14,6 +14,7 @@ export const settings = pgTable(
   {
     id: smallint("id").primaryKey().default(1),
     accessToken: text("access_token").notNull(),
+    printAccessToken: text("print_access_token").notNull().default(""),
     tokenRotatedAt: timestamp("token_rotated_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -35,7 +36,7 @@ export const photos = pgTable(
     uploadedAt: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
-    sectionCheck: check("photos_section_check", sql`${t.section} IN ('triptych','gallery')`),
+    sectionCheck: check("photos_section_check", sql`${t.section} IN ('triptych','gallery','print-cover')`),
     byPos: index("photos_section_pos").on(t.section, t.position),
   }),
 );

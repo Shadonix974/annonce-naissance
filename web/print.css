@@ -1,0 +1,275 @@
+/* ============================================================
+   Print page — Polaroid-on-paper design.
+   Screen: warm paper background + slightly-rotated polaroid card
+   with soft shadow + washi-tape accent. Print: flattens the
+   rotation/shadow/tape so it can be cut and glued cleanly.
+   Fits both A4 and Letter via relative units + @page.
+   ============================================================ */
+
+:root {
+  --ink: #2a251e;
+  --paper: #ebe1cc;
+  --card: #fdfaf1;
+  --gold: #b08a4b;
+  --gold-soft: #d4b77e;
+  --muted: #8a8275;
+  --serif: 'Cormorant Garamond', serif;
+  --script: 'Italianno', cursive;
+  --mono: 'JetBrains Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-weight: 300;
+  min-height: 100vh;
+  /* Soft warm paper texture via layered gradients (no image assets) */
+  background-image:
+    radial-gradient(ellipse at 18% 12%, rgba(255, 248, 232, 0.6), transparent 55%),
+    radial-gradient(ellipse at 82% 88%, rgba(160, 130, 80, 0.08), transparent 60%),
+    radial-gradient(ellipse at 50% 50%, rgba(255, 250, 240, 0.2), transparent 80%);
+}
+
+.sheet {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 48px 24px;
+}
+
+/* ============================================================
+   The polaroid itself
+   ============================================================ */
+.polaroid {
+  position: relative;
+  background: var(--card);
+  padding: 18px 18px 42px;
+  max-width: 440px;
+  width: 100%;
+  transform: rotate(-1.6deg);
+  border-radius: 1px;
+  /* Two-layer soft shadow — feels like a print resting on paper */
+  box-shadow:
+    0 2px 2px rgba(60, 45, 20, 0.08),
+    0 24px 60px rgba(60, 45, 20, 0.22),
+    0 6px 14px rgba(60, 45, 20, 0.1);
+}
+
+/* Washi tape at the top — on-screen decorative, hidden on print */
+.polaroid .tape {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 130px;
+  height: 26px;
+  transform: translateX(-50%) rotate(-2.2deg);
+  background: linear-gradient(
+    135deg,
+    rgba(212, 183, 126, 0.78) 0%,
+    rgba(232, 205, 150, 0.58) 50%,
+    rgba(212, 183, 126, 0.78) 100%
+  );
+  border-left: 1px dashed rgba(255, 255, 255, 0.4);
+  border-right: 1px dashed rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 6px rgba(60, 45, 20, 0.12);
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* ============================================================
+   Photo frame (square, inside the white mat)
+   ============================================================ */
+.polaroid .photo {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #0a0a0a;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+.polaroid .photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.polaroid .photo img[data-hidden] { display: none; }
+.cover-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--serif);
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13px;
+  letter-spacing: 0.15em;
+}
+.polaroid .photo img:not([data-hidden]) + .cover-fallback { display: none; }
+
+/* ============================================================
+   Caption under the photo — handwritten/elegant feel
+   ============================================================ */
+.polaroid .caption {
+  text-align: center;
+  padding: 22px 12px 2px;
+}
+
+.welcome {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+.name {
+  font-family: var(--script);
+  font-weight: 400;
+  font-size: 80px;
+  line-height: 0.88;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+}
+
+.middle-name {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 20px;
+  color: var(--gold);
+  margin-top: 4px;
+  letter-spacing: 0.04em;
+}
+
+.divider {
+  color: var(--gold);
+  font-size: 12px;
+  letter-spacing: 0.6em;
+  margin: 18px 0 14px;
+}
+
+.meta {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ink);
+  line-height: 1.7;
+}
+.meta .dot {
+  color: var(--gold);
+  margin: 0 10px;
+  font-style: normal;
+}
+
+.place {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.place .sep {
+  color: var(--gold);
+  margin: 0 6px;
+  font-size: 10px;
+  vertical-align: middle;
+}
+
+.parents {
+  font-family: var(--script);
+  font-size: 38px;
+  color: var(--gold);
+  margin-top: 20px;
+  line-height: 1;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 10px;
+}
+.parents .amp {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 22px;
+  color: var(--ink);
+  align-self: center;
+}
+
+/* ============================================================
+   Floating "Imprimer" button — on-screen only
+   ============================================================ */
+.print-actions {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  z-index: 100;
+}
+.print-actions button {
+  padding: 12px 20px;
+  background: var(--ink);
+  color: var(--card);
+  border: 0;
+  font-family: var(--serif);
+  font-size: 14pt;
+  cursor: pointer;
+  border-radius: 2px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+}
+.print-actions button:hover { background: #1a1612; }
+
+/* ============================================================
+   Print — flatten rotation/shadow/tape, keep the design.
+   Works for both A4 (210×297mm) and Letter (216×279mm).
+   ============================================================ */
+@page { margin: 12mm; }
+
+@media print {
+  html, body {
+    background: #fff;
+    background-image: none;
+  }
+  .no-print { display: none !important; }
+  .sheet {
+    padding: 0;
+    min-height: auto;
+  }
+  .polaroid {
+    transform: none;
+    box-shadow: none;
+    max-width: none;
+    width: auto;
+    margin: 0 auto;
+    padding: 14mm 14mm 20mm;
+    background: #fdfaf1;
+  }
+  .polaroid .photo {
+    box-shadow: none;
+    max-height: 140mm;
+  }
+  .name { font-size: 90pt; }
+  .middle-name { font-size: 22pt; margin-top: 6pt; }
+  .divider { font-size: 12pt; margin: 14pt 0 10pt; }
+  .meta { font-size: 14pt; line-height: 1.6; }
+  .place { font-size: 12pt; margin-top: 8pt; }
+  .parents { font-size: 42pt; margin-top: 22pt; }
+  .parents .amp { font-size: 22pt; }
+  .welcome { font-size: 9pt; }
+}
+
+/* ============================================================
+   Narrow viewport — phone previewing the page
+   ============================================================ */
+@media (max-width: 600px) {
+  .sheet { padding: 24px 16px; }
+  .polaroid {
+    max-width: 100%;
+    padding: 14px 14px 30px;
+    transform: rotate(-1deg);
+  }
+  .name { font-size: 60px; }
+  .middle-name { font-size: 17px; }
+  .parents { font-size: 30px; }
+}

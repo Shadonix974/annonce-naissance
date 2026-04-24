@@ -35,8 +35,17 @@ app.post("/", async (c) => {
   if (!(file instanceof File)) throw new ValidationError("missing_file");
   if (!ACCEPTED_MIME.has(file.type)) throw new ValidationError("unsupported_type");
   if (file.size > MAX_BYTES) throw new ValidationError("file_too_large");
-  if (!["triptych", "gallery"].includes(section)) throw new ValidationError("bad_section");
+  if (!["triptych", "gallery", "print-cover"].includes(section)) throw new ValidationError("bad_section");
   if (!alt.trim()) throw new ValidationError("alt_required");
+
+  // Max-one invariant for print-cover — delete the previous one, if any.
+  if (section === "print-cover") {
+    const previous = await db.select().from(photos).where(eq(photos.section, "print-cover"));
+    for (const p of previous) {
+      await db.delete(photos).where(eq(photos.id, p.id));
+      await removePrefix(`photos/${p.id}/`);
+    }
+  }
 
   const buf = Buffer.from(await file.arrayBuffer());
   const [processed, originalJpg] = await Promise.all([

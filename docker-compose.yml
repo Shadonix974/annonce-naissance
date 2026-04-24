@@ -23,6 +23,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgres://annonce:${DB_PASSWORD}@postgres:5432/annonce
+      PRINT_BASE_URL: https://${PUBLIC_HOSTNAME}
     networks: [annonce-net, minio-net]
     depends_on:
       postgres:

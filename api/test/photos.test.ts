@@ -492,3 +492,71 @@ test("PATCH /reorder rolls back valid items when one id is unknown", async () =>
   const state = await stateRes.json() as { photos: Array<{ id: string; section: string; position: number }> };
   expect(state.photos.find((p) => p.id === id)).toMatchObject({ section: "gallery", position: 0 });
 }, 60_000);
+
+test("upload with section=print-cover deletes the previous print-cover (max 1 invariant)", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+
+  // First print-cover upload.
+  const fd1 = new FormData();
+  fd1.append("file", new Blob([await makePng()], { type: "image/png" }), "a.png");
+  fd1.append("section", "print-cover");
+  fd1.append("alt", "cover a");
+  const res1 = await app.fetch(uploadReq(cookie, fd1));
+  expect(res1.status).toBe(201);
+  const first = await res1.json() as { id: string };
+
+  // Second print-cover upload — should delete the first.
+  const fd2 = new FormData();
+  fd2.append("file", new Blob([await makePng()], { type: "image/png" }), "b.png");
+  fd2.append("section", "print-cover");
+  fd2.append("alt", "cover b");
+  const res2 = await app.fetch(uploadReq(cookie, fd2));
+  expect(res2.status).toBe(201);
+  const second = await res2.json() as { id: string };
+
+  // Verify the first photo row is gone.
+  const token = (await getAccessToken())!;
+  const stateRes = await app.fetch(new Request("http://localhost:3000/api/state", {
+    headers: { "x-access-token": token },
+  }));
+  const state = await stateRes.json() as { photos: Array<{ id: string; section: string }> };
+  const coverCount = state.photos.filter((p) => p.section === "print-cover").length;
+  expect(coverCount).toBe(1);
+  expect(state.photos.find((p) => p.id === first.id)).toBeUndefined();
+  expect(state.photos.find((p) => p.id === second.id)).toBeDefined();
+
+  // Verify MinIO objects for the first are gone.
+  const firstKeys: string[] = [];
+  for await (const o of minio.listObjects(BUCKET, `photos/${first.id}/`, true)) {
+    if (o.name) firstKeys.push(o.name);
+  }
+  expect(firstKeys).toHaveLength(0);
+}, 90_000);
+
+test("upload with section=print-cover coexists with triptych and gallery photos", async () => {
+  const app = await buildApp();
+  const cookie = await adminCookie(app);
+
+  const fdTriptych = new FormData();
+  fdTriptych.append("file", new Blob([await makePng()], { type: "image/png" }), "t.png");
+  fdTriptych.append("section", "triptych");
+  fdTriptych.append("alt", "triptych");
+  await app.fetch(uploadReq(cookie, fdTriptych));
+
+  const fdCover = new FormData();
+  fdCover.append("file", new Blob([await makePng()], { type: "image/png" }), "c.png");
+  fdCover.append("section", "print-cover");
+  fdCover.append("alt", "cover");
+  const coverRes = await app.fetch(uploadReq(cookie, fdCover));
+  expect(coverRes.status).toBe(201);
+
+  // Neither photo deletes the other — they're in different sections.
+  const token = (await getAccessToken())!;
+  const stateRes = await app.fetch(new Request("http://localhost:3000/api/state", {
+    headers: { "x-access-token": token },
+  }));
+  const state = await stateRes.json() as { photos: Array<{ section: string }> };
+  expect(state.photos.filter((p) => p.section === "triptych")).toHaveLength(1);
+  expect(state.photos.filter((p) => p.section === "print-cover")).toHaveLength(1);
+}, 90_000);
