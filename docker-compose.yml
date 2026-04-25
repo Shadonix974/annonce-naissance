@@ -4,6 +4,12 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    # Caddy resolves {$VAR} substitutions in /etc/caddy/Caddyfile from its own
+    # process environment. The Caddyfile references {$CADDY_EMAIL} and
+    # {$PUBLIC_HOSTNAME}, so the .env file must be loaded into the container
+    # — otherwise Caddy errors out with "wrong argument count" on the empty
+    # email directive at startup.
+    env_file: .env
     ports:
       - "80:80"
       - "443:443"
