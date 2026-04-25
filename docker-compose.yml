@@ -24,7 +24,12 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgres://annonce:${DB_PASSWORD}@postgres:5432/annonce
       PRINT_BASE_URL: https://${PUBLIC_HOSTNAME}
-    networks: [annonce-net, minio-net]
+    networks: [annonce-net]
+    # MinIO is NOT bundled here — MINIO_ENDPOINT in .env points to a remote
+    # MinIO instance (typically reachable through a WireGuard tunnel or via
+    # the host's network). The container reaches the host network through
+    # the bridge driver, so any IP routable from the host (incl. WG tunnel
+    # IPs like 10.0.0.x) is reachable from the api container.
     depends_on:
       postgres:
         condition: service_healthy
@@ -77,6 +82,3 @@ volumes:
 networks:
   annonce-net:
     driver: bridge
-  minio-net:
-    external: true
-    name: ${MINIO_NETWORK:-minio_default}
