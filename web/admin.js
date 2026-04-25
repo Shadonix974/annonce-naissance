@@ -461,7 +461,7 @@ async function renderPhotosTab() {
         <div>📸 Glissez-déposez ou cliquez pour sélectionner</div>
         <div class="hint">Plusieurs fichiers acceptés. Cadrez chaque photo avant envoi.</div>
       </div>
-      <input id="photoInput" type="file" accept="image/*" multiple capture="environment">
+      <input id="photoInput" type="file" accept="image/*" multiple>
     </label>
     <div class="row">
       <label>Section par défaut
