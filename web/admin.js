@@ -1124,7 +1124,17 @@ async function openImageDownloadModal(blob, filename) {
       dlg.removeEventListener('cancel', onCancel);
     };
     const onConfirm = () => {
-      const canvas = cropper.getCroppedCanvas({ imageSmoothingQuality: 'high' });
+      // Guard against double-click — toBlob is async, listener removal happens in
+      // its callback, so a quick second click otherwise triggers a second download.
+      confirmBtn.disabled = true;
+      let canvas;
+      try {
+        canvas = cropper.getCroppedCanvas({ imageSmoothingQuality: 'high' });
+      } catch {
+        cleanup();
+        resolve();
+        return;
+      }
       canvas.toBlob((croppedBlob) => {
         if (croppedBlob) triggerDownload(croppedBlob, filename);
         cleanup();
