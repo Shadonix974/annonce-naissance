@@ -1,12 +1,16 @@
 import { Readable } from "node:stream";
+import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { stream } from "hono/streaming";
+import { db, schema } from "../../db/client.js";
 import { env } from "../../env.js";
 import { getPrintAccessToken, rotatePrintAccessToken } from "../../lib/access-token.js";
 import { ValidationError } from "../../lib/errors.js";
 import { assertSameOrigin } from "../../lib/origin-check.js";
-import { renderPrintPdf, type PrintFormat } from "../../lib/print-pdf.js";
+import { renderPrintImage } from "../../lib/print-image.js";
 import { requireAdmin } from "../../middleware/require-admin.js";
+
+const { tweaks } = schema;
 
 const app = new Hono();
 app.use("*", requireAdmin);
@@ -23,23 +27,37 @@ app.post("/rotate", async (c) => {
   return c.json({ token, link: `${env.PUBLIC_ORIGIN}/print?k=${token}` });
 });
 
-app.get("/pdf", async (c) => {
-  const rawFormat = c.req.query("format") ?? "a4";
-  const formatMap: Record<string, PrintFormat> = { a4: "A4", letter: "Letter" };
-  const format = formatMap[rawFormat.toLowerCase()];
-  if (!format) throw new ValidationError("bad_format");
+/**
+ * Slugify a baby name for use in a download filename.
+ * "Éloïse-Marie" → "eloise-marie", "  " → "", "Léon!" → "leon".
+ */
+function slugifyBabyName(name: string | undefined): string {
+  if (!name) return "";
+  return name
+    .normalize("NFD")
+    // Strip combining diacritics (Unicode block U+0300..U+036F).
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
+app.get("/image", async (c) => {
   const token = await getPrintAccessToken();
   if (!token) throw new ValidationError("print_token_missing");
 
-  const url = `${env.PRINT_BASE_URL}/print?k=${encodeURIComponent(token)}`;
-  const pdf = await renderPrintPdf(url, format);
+  const [row] = await db.select().from(tweaks).where(eq(tweaks.key, "babyName"));
+  const slug = slugifyBabyName(row?.value);
+  const filename = slug ? `annonce-naissance-${slug}.png` : "annonce-naissance.png";
 
-  c.header("Content-Type", "application/pdf");
-  c.header("Content-Disposition", `attachment; filename="annonce-naissance-${format.toLowerCase()}.pdf"`);
+  const url = `${env.PRINT_BASE_URL}/print?k=${encodeURIComponent(token)}`;
+  const png = await renderPrintImage(url);
+
+  c.header("Content-Type", "image/png");
+  c.header("Content-Disposition", `attachment; filename="${filename}"`);
   c.header("Cache-Control", "no-store");
   return stream(c, async (s) => {
-    const webStream = Readable.toWeb(Readable.from(pdf)) as unknown as ReadableStream<Uint8Array>;
+    const webStream = Readable.toWeb(Readable.from(png)) as unknown as ReadableStream<Uint8Array>;
     await s.pipe(webStream);
   });
 });
