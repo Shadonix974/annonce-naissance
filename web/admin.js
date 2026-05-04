@@ -991,56 +991,55 @@ async function renderPrintTab() {
 
   tab.appendChild(item);
 
-  // PDF download
-  const pdfTitle = document.createElement('div');
-  pdfTitle.className = 'section-title';
-  pdfTitle.textContent = 'Télécharger en PDF';
-  tab.appendChild(pdfTitle);
+  // Image download
+  const imgTitle = document.createElement('div');
+  imgTitle.className = 'section-title';
+  imgTitle.textContent = "Télécharger l'image";
+  tab.appendChild(imgTitle);
 
-  const pdfItem = document.createElement('div');
-  pdfItem.className = 'item';
-  const pdfActions = document.createElement('div');
+  const imgItem = document.createElement('div');
+  imgItem.className = 'item';
+  const imgActions = document.createElement('div');
 
-  const a4Btn = document.createElement('button');
-  a4Btn.textContent = 'Télécharger PDF A4';
-  a4Btn.addEventListener('click', () => downloadPdf('a4', a4Btn));
+  const imgBtn = document.createElement('button');
+  imgBtn.textContent = "Télécharger l'image (PNG)";
+  imgBtn.addEventListener('click', () => downloadImage(imgBtn));
 
-  const letterBtn = document.createElement('button');
-  letterBtn.className = 'secondary';
-  letterBtn.textContent = 'Télécharger PDF Letter';
-  letterBtn.style.marginLeft = '8px';
-  letterBtn.addEventListener('click', () => downloadPdf('letter', letterBtn));
+  imgActions.appendChild(imgBtn);
+  imgItem.appendChild(imgActions);
 
-  pdfActions.appendChild(a4Btn);
-  pdfActions.appendChild(letterBtn);
-  pdfItem.appendChild(pdfActions);
+  const imgNote = document.createElement('p');
+  imgNote.style.marginTop = '12px';
+  imgNote.style.fontSize = '13px';
+  imgNote.style.color = 'var(--muted)';
+  imgNote.textContent = "Image PNG haute résolution (1500×1875). Idéale pour partage WhatsApp, SMS, ou impression à la maison.";
+  imgItem.appendChild(imgNote);
 
-  const pdfNote = document.createElement('p');
-  pdfNote.style.marginTop = '12px';
-  pdfNote.style.fontSize = '13px';
-  pdfNote.style.color = 'var(--muted)';
-  pdfNote.textContent = 'Génération côté serveur via Chromium headless. ~3 secondes.';
-  pdfItem.appendChild(pdfNote);
-
-  tab.appendChild(pdfItem);
+  tab.appendChild(imgItem);
 }
 
-async function downloadPdf(format, btn) {
+async function downloadImage(btn) {
   const originalText = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Génération…';
   try {
-    const r = await fetch(`/api/admin/print/pdf?format=${format}`);
+    const r = await fetch('/api/admin/print/image');
     if (!r.ok) {
       btn.textContent = `Erreur ${r.status}`;
       setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
       return;
     }
+    // Extract the filename from Content-Disposition (server provides slugged name).
+    let filename = 'annonce-naissance.png';
+    const cd = r.headers.get('content-disposition') || '';
+    const m = cd.match(/filename="([^"]+)"/);
+    if (m) filename = m[1];
+
     const blob = await r.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `annonce-naissance-${format}.pdf`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
