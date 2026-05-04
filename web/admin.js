@@ -1047,13 +1047,104 @@ async function downloadImage(btn) {
     if (m) filename = m[1];
 
     const blob = await r.blob();
-    triggerDownload(blob, filename);
-    btn.textContent = 'Téléchargé ✓';
-    setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 1500);
+    // Restore the button BEFORE opening the modal — the modal owns the next step
+    // of the user flow, the button has done its job.
+    btn.textContent = originalText;
+    btn.disabled = false;
+    await openImageDownloadModal(blob, filename);
   } catch (err) {
     btn.textContent = 'Erreur';
     setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
   }
+}
+
+/* ============================================================
+   Image download modal — Cropper.js with 4 ratio presets.
+   Default = Original (4:5) ratio + autoCropArea: 1, so a direct
+   "Télécharger" click yields the full polaroid (no regression).
+   ============================================================ */
+const IMAGE_DOWNLOAD_RATIOS = [
+  { label: 'Original', value: 4 / 5 },
+  { label: 'Carré',    value: 1 },
+  { label: 'Story',    value: 9 / 16 },
+  { label: 'Libre',    value: NaN },
+];
+
+async function openImageDownloadModal(blob, filename) {
+  const Cropper = await loadCropper();
+  const dlg = document.getElementById('imageDownloadModal');
+  const img = document.getElementById('imageDownloadPreview');
+  const ratioBar = document.getElementById('imageDownloadRatios');
+  const confirmBtn = document.getElementById('imageDownloadConfirm');
+  const cancelBtn = document.getElementById('imageDownloadCancel');
+  const closeBtn = document.getElementById('imageDownloadClose');
+
+  const objectUrl = URL.createObjectURL(blob);
+  img.src = objectUrl;
+
+  ratioBar.innerHTML = '';
+  let activeRatio = IMAGE_DOWNLOAD_RATIOS[0].value;
+  const ratioButtons = IMAGE_DOWNLOAD_RATIOS.map((r, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = r.label;
+    b.className = i === 0 ? 'active' : '';
+    b.addEventListener('click', () => {
+      ratioButtons.forEach((bb) => bb.classList.remove('active'));
+      b.classList.add('active');
+      activeRatio = r.value;
+      cropper.setAspectRatio(activeRatio);
+    });
+    ratioBar.appendChild(b);
+    return b;
+  });
+
+  await new Promise((r) => img.addEventListener('load', r, { once: true }));
+  const cropper = new Cropper(img, {
+    aspectRatio: activeRatio,
+    viewMode: 1,
+    autoCropArea: 1,
+    responsive: true,
+    restore: true,
+    background: false,
+    movable: true,
+    zoomable: true,
+    rotatable: false,
+    scalable: false,
+  });
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      cropper.destroy();
+      URL.revokeObjectURL(objectUrl);
+      dlg.close();
+      confirmBtn.removeEventListener('click', onConfirm);
+      cancelBtn.removeEventListener('click', onCancel);
+      closeBtn.removeEventListener('click', onCancel);
+      dlg.removeEventListener('cancel', onCancel);
+    };
+    const onConfirm = () => {
+      const canvas = cropper.getCroppedCanvas({ imageSmoothingQuality: 'high' });
+      canvas.toBlob((croppedBlob) => {
+        if (croppedBlob) triggerDownload(croppedBlob, filename);
+        cleanup();
+        resolve();
+      }, 'image/png');
+    };
+    const onCancel = (e) => {
+      // The native <dialog> 'cancel' event (Escape) calls this with an event
+      // object; the button handlers call it with no arg. Both paths run cleanup.
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+      cleanup();
+      resolve();
+    };
+
+    confirmBtn.addEventListener('click', onConfirm);
+    cancelBtn.addEventListener('click', onCancel);
+    closeBtn.addEventListener('click', onCancel);
+    dlg.addEventListener('cancel', onCancel);
+    dlg.showModal();
+  });
 }
 
 async function renderSecurityTab() {
