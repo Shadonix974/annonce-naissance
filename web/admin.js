@@ -1051,6 +1051,7 @@ async function downloadImage(btn) {
     setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
   }
 }
+
 async function renderSecurityTab() {
   const tab = $('#tab-security');
   tab.innerHTML = '';
