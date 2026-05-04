@@ -59,7 +59,7 @@ GET /api/admin/print/image
    Cache-Control: no-store
 ```
 
-**Nom de fichier :** `annonce-naissance-<slug>.png` où `<slug>` est le `babyName` lowercased + accents retirés + non-alpha → `-`. Exemple : `Léonard` → `annonce-naissance-leonard.png`. Si `babyName` est vide ou indisponible, fallback `annonce-naissance.png`.
+**Nom de fichier :** `annonce-naissance-<slug>.png` où `<slug>` est le `babyName` lowercased + accents retirés + non-alpha → `-`. Exemple générique : `Éloïse-Marie` → `annonce-naissance-eloise-marie.png`. Si `babyName` est vide ou indisponible, fallback `annonce-naissance.png`.
 
 **Source du `babyName` :** lu depuis la table `tweaks` (clé `"babyName"`), même source que celle exposée par `GET /api/print/state` aux recipients de la page print (cf `api/src/routes/print.ts:15`). Lecture directe via `db.select().from(tweaks).where(eq(tweaks.key, "babyName"))`.
 
