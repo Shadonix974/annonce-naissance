@@ -104,7 +104,7 @@ button.danger   { background: var(--err); color: white; }
 /* ============================================================
    Crop modal
    ============================================================ */
-.crop-modal, .delete-modal {
+.crop-modal, .delete-modal, .image-download-modal {
   border: 0;
   padding: 0;
   background: var(--panel);
@@ -114,7 +114,7 @@ button.danger   { background: var(--err); color: white; }
   width: min(960px, 92vw);
   max-height: 90vh;
 }
-.crop-modal::backdrop, .delete-modal::backdrop {
+.crop-modal::backdrop, .delete-modal::backdrop, .image-download-modal::backdrop {
   background: rgba(10, 12, 24, 0.72);
   backdrop-filter: blur(4px);
 }
@@ -187,6 +187,51 @@ button.danger   { background: var(--err); color: white; }
   z-index: 1000;
 }
 [hidden].toast { display: none !important; }
+
+/* ============================================================
+   Image download modal — vertical layout (header / ratios / image / actions)
+   ============================================================ */
+.image-download-modal-inner {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 12px;
+  max-height: 90vh;
+  min-width: 0;
+}
+.image-download-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.image-download-title { font-size: 16px; }
+.image-download-close {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1;
+  padding: 0 6px;
+  cursor: pointer;
+}
+.image-download-close:hover { color: var(--ink); }
+.image-download-stage {
+  background: #000;
+  min-height: 320px;
+  max-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 4px;
+}
+.image-download-stage img { max-width: 100%; max-height: 70vh; display: block; }
+.image-download-modal .actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+.image-download-modal .actions button { flex: 1; }
 
 /* ============================================================
    Mobile — crop modal fills the screen + safe area

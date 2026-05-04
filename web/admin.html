@@ -77,6 +77,23 @@
     </form>
   </dialog>
 
+  <dialog id="imageDownloadModal" class="image-download-modal" aria-labelledby="imageDownloadTitle">
+    <form method="dialog" class="image-download-modal-inner">
+      <div class="image-download-header">
+        <div class="image-download-title" id="imageDownloadTitle">Télécharger l'image</div>
+        <button type="button" class="image-download-close" id="imageDownloadClose" aria-label="Fermer">×</button>
+      </div>
+      <div class="ratios" id="imageDownloadRatios"></div>
+      <div class="image-download-stage">
+        <img id="imageDownloadPreview" alt="">
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary" id="imageDownloadCancel">Annuler</button>
+        <button type="button" id="imageDownloadConfirm">Télécharger</button>
+      </div>
+    </form>
+  </dialog>
+
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
   <script type="module" src="/admin.js"></script>
