@@ -1018,6 +1018,17 @@ async function renderPrintTab() {
   tab.appendChild(imgItem);
 }
 
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 async function downloadImage(btn) {
   const originalText = btn.textContent;
   btn.disabled = true;
@@ -1036,14 +1047,7 @@ async function downloadImage(btn) {
     if (m) filename = m[1];
 
     const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    triggerDownload(blob, filename);
     btn.textContent = 'Téléchargé ✓';
     setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 1500);
   } catch (err) {
